@@ -5,9 +5,9 @@ import (
 	"fmt"
 )
 
-type StepFlow struct {
-	rootItem       StepFlowItem
-	transitionsMap map[string][]Transition
+type StepFlow interface {
+	Apply(ctx context.Context, state []string) ([]string, error)
+	IsCompleted(state []string) bool
 }
 
 type StepFlowItem interface {
@@ -19,7 +19,12 @@ type StepFlowItem interface {
 	Transitions() ([]Transition, error)
 }
 
-func NewNamedStepFlow(name string, nameItemPairs ...any) (*StepFlow, error) {
+type stepFlow struct {
+	rootItem       StepFlowItem
+	transitionsMap map[string][]Transition
+}
+
+func NewNamedStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
 	rootItem := Steps(nameItemPairs...).WithName(name)
 
 	transitions, err := rootItem.Transitions()
@@ -32,10 +37,10 @@ func NewNamedStepFlow(name string, nameItemPairs ...any) (*StepFlow, error) {
 		transitionsMap[t.Source()] = append(transitionsMap[t.Source()], t)
 	}
 
-	return &StepFlow{rootItem: rootItem, transitionsMap: transitionsMap}, nil
+	return &stepFlow{rootItem: rootItem, transitionsMap: transitionsMap}, nil
 }
 
-func (sf *StepFlow) Apply(ctx context.Context, state []string) ([]string, error) {
+func (sf *stepFlow) Apply(ctx context.Context, state []string) ([]string, error) {
 	if sf.IsCompleted(state) {
 		return state, nil
 	}
@@ -54,7 +59,7 @@ func (sf *StepFlow) Apply(ctx context.Context, state []string) ([]string, error)
 	return nil, fmt.Errorf("unhnadled state %s", state)
 }
 
-func (sf *StepFlow) IsCompleted(state []string) bool {
+func (sf *stepFlow) IsCompleted(state []string) bool {
 	if len(state) != 1 {
 		return false
 	}

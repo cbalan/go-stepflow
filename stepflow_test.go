@@ -54,7 +54,7 @@ func TestSteps(t *testing.T) {
 		return nil
 	}
 
-	maxIterations := 17
+	expectedIterations := 17
 
 	flow, err := stepflow.NewNamedStepFlow("TestSteps",
 		"stepA", stepA,
@@ -75,7 +75,7 @@ func TestSteps(t *testing.T) {
 	var ex []string
 
 	var state []string
-	for i := range maxIterations {
+	for i := range expectedIterations {
 		t.Logf("[%d] appling stepflow on state %s", i, state)
 
 		ctx := context.WithValue(context.TODO(), exContextKey, &ex)
