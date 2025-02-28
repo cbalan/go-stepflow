@@ -53,6 +53,8 @@ func itemsFromNameItemPairs(namespace string, nameItemPairs []any) ([]StepFlowIt
 		return nil, fmt.Errorf("un-even nameItemsPair")
 	}
 
+	seenNames := make(map[string]bool)
+
 	var items []StepFlowItem
 	for i := 0; i < len(nameItemPairs); i += 2 {
 		maybeName := nameItemPairs[i]
@@ -62,6 +64,11 @@ func itemsFromNameItemPairs(namespace string, nameItemPairs []any) ([]StepFlowIt
 		if !ok {
 			return nil, fmt.Errorf("unexpected type %T used as string", maybeName)
 		}
+
+		if seenNames[name] {
+			return nil, fmt.Errorf("name %s must be unique in the current context", name)
+		}
+		seenNames[name] = true
 
 		item, err := newNamedItem(namespacedName(namespace, name), maybeItem)
 		if err != nil {
