@@ -63,7 +63,7 @@ func itemsFromNameItemPairs(namespace string, nameItemPairs []any) ([]StepFlowIt
 			return nil, fmt.Errorf("unexpected type %T used as string", maybeName)
 		}
 
-		item, err := NewNamedItem(namespacedName(namespace, name), maybeItem)
+		item, err := newNamedItem(namespacedName(namespace, name), maybeItem)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create new named step flow item due to %w", err)
 		}
@@ -78,7 +78,7 @@ func namespacedName(namespace string, name string) string {
 	return fmt.Sprintf("%s/%s", namespace, name)
 }
 
-func NewNamedItem(name string, maybeItem any) (StepFlowItem, error) {
+func newNamedItem(name string, maybeItem any) (StepFlowItem, error) {
 	switch maybeItemV := maybeItem.(type) {
 	case StepFlowItem:
 		return maybeItemV.WithName(name), nil

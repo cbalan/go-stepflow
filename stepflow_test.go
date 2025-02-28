@@ -54,9 +54,7 @@ func TestSteps(t *testing.T) {
 		return nil
 	}
 
-	expectedIterations := 17
-
-	flow, err := stepflow.NewNamedStepFlow("TestSteps",
+	flow, err := stepflow.NewStepFlow("TestSteps",
 		"stepA", stepA,
 		"stepB", stepB,
 		"stepC", stepC,
@@ -73,8 +71,10 @@ func TestSteps(t *testing.T) {
 
 	// Execute the stepflow
 	var ex []string
-
 	var state []string
+
+	expectedIterations := 17
+
 	for i := range expectedIterations {
 		t.Logf("[%d] appling stepflow on state %s", i, state)
 
