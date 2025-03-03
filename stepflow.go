@@ -40,14 +40,14 @@ func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
 	return &stepFlow{item: item, transitionsMap: transitionsMap}, nil
 }
 
-const MAX_APPLY_ONE_ITERATIONS = 100
+const ApplyOneMaxIterations = 100
 
 func (sf *stepFlow) Apply(ctx context.Context, state []string) ([]string, error) {
 	intermedieryState := state
 	var isExclusive bool
 	var err error
 
-	for range MAX_APPLY_ONE_ITERATIONS {
+	for range ApplyOneMaxIterations {
 		intermedieryState, isExclusive, err = sf.applyOne(ctx, intermedieryState)
 		if err != nil || isExclusive {
 			break
