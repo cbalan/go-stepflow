@@ -8,58 +8,59 @@ import (
 	"github.com/cbalan/go-stepflow"
 )
 
-func TestStepFlowApply(t *testing.T) {
+func TestLoopUntil(t *testing.T) {
 	type contextKey string
 	const exContextKey = contextKey("ex")
 
-	stepA := func(ctx context.Context) error {
+	addA := func(ctx context.Context) error {
 		ex, ok := ctx.Value(exContextKey).(*[]string)
 		if !ok {
 			return fmt.Errorf("failed to get exchange from context")
 		}
-		*ex = append(*ex, "stepA")
+		*ex = append(*ex, "A")
 
 		return nil
 	}
 
-	stepB := func(ctx context.Context) error {
+	exLenIsAcceptable := func(ctx context.Context) (bool, error) {
+		ex, ok := ctx.Value(exContextKey).(*[]string)
+		if !ok {
+			return false, fmt.Errorf("failed to get exchange from context")
+		}
+
+		return len(*ex) > 10, nil
+	}
+
+	logExchange := func(ctx context.Context) error {
 		ex, ok := ctx.Value(exContextKey).(*[]string)
 		if !ok {
 			return fmt.Errorf("failed to get exchange from context")
 		}
-		*ex = append(*ex, "stepB")
+
+		t.Logf("Current exchange: %s", ex)
 
 		return nil
 	}
 
-	stepC := func(ctx context.Context) error {
-		ex, ok := ctx.Value(exContextKey).(*[]string)
-		if !ok {
-			return fmt.Errorf("failed to get exchange from context")
-		}
-
-		*ex = append(*ex, "stepC")
-
-		return nil
-	}
-
-	flow, err := stepflow.NewStepFlow("TestStepFlowApply",
-		"stepA", stepA,
-		"stepB", stepB,
-		"stepC", stepC,
+	flow, err := stepflow.NewStepFlow("TestLoopUntil",
+		"addA", addA,
+		"growEx", stepflow.LoopUntil(exLenIsAcceptable,
+			"addA", addA,
+			"logExchange", logExchange,
+		),
+		"logExchange", logExchange,
 	)
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Execute the stepflow
 	var ex []string
 	var state []string
 
-	expectedIterations := 4
+	expectedIterations := 33
 	for i := range expectedIterations {
 		t.Logf("[%d] Applying stepflow on state %s", i, state)
+
 		ctx := context.WithValue(context.TODO(), exContextKey, &ex)
 		state, err = flow.Apply(ctx, state)
 		if err != nil {
@@ -72,10 +73,5 @@ func TestStepFlowApply(t *testing.T) {
 	// stepflow should have been completed after the extected number of iterations.
 	if !flow.IsCompleted(state) {
 		t.Fatalf("Unexpected state %s", state)
-	}
-
-	expectedExString := "[stepA stepB stepC]"
-	if fmt.Sprintf("%s", ex) != expectedExString {
-		t.Fatalf("Unexpected exchange. Expected: %s, Actual: %s", expectedExString, ex)
 	}
 }

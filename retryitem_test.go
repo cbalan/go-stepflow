@@ -8,58 +8,69 @@ import (
 	"github.com/cbalan/go-stepflow"
 )
 
-func TestStepFlowApply(t *testing.T) {
+func TestRetry(t *testing.T) {
 	type contextKey string
 	const exContextKey = contextKey("ex")
 
-	stepA := func(ctx context.Context) error {
+	addA := func(ctx context.Context) error {
 		ex, ok := ctx.Value(exContextKey).(*[]string)
 		if !ok {
 			return fmt.Errorf("failed to get exchange from context")
 		}
-		*ex = append(*ex, "stepA")
+		*ex = append(*ex, "A")
 
 		return nil
 	}
 
-	stepB := func(ctx context.Context) error {
-		ex, ok := ctx.Value(exContextKey).(*[]string)
-		if !ok {
-			return fmt.Errorf("failed to get exchange from context")
-		}
-		*ex = append(*ex, "stepB")
-
-		return nil
+	logErrorAndRetry := func(ctx context.Context, err error) (bool, error) {
+		t.Logf("handling error %s", err)
+		return true, nil
 	}
 
-	stepC := func(ctx context.Context) error {
+	returnErrorSometimes := func(ctx context.Context) error {
 		ex, ok := ctx.Value(exContextKey).(*[]string)
 		if !ok {
 			return fmt.Errorf("failed to get exchange from context")
 		}
 
-		*ex = append(*ex, "stepC")
+		if len(*ex) < 3 {
+			return fmt.Errorf("error")
+		}
 
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow("TestStepFlowApply",
-		"stepA", stepA,
-		"stepB", stepB,
-		"stepC", stepC,
+	logExchange := func(ctx context.Context) error {
+		ex, ok := ctx.Value(exContextKey).(*[]string)
+		if !ok {
+			return fmt.Errorf("failed to get exchange from context")
+		}
+
+		t.Logf("Current exchange: %s", ex)
+
+		return nil
+	}
+
+	flow, err := stepflow.NewStepFlow("TestRetry",
+		"logInitialExchange", logExchange,
+		"growEx", stepflow.Retry(logErrorAndRetry,
+			"addA", addA,
+			"stepWithError", returnErrorSometimes,
+			"logExchange", logExchange,
+		),
+		"logExchange", logExchange,
 	)
-
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Execute the stepflow
 	var ex []string
 	var state []string
 
-	expectedIterations := 4
+	expectedIterations := 10
 	for i := range expectedIterations {
 		t.Logf("[%d] Applying stepflow on state %s", i, state)
+
 		ctx := context.WithValue(context.TODO(), exContextKey, &ex)
 		state, err = flow.Apply(ctx, state)
 		if err != nil {
@@ -72,10 +83,5 @@ func TestStepFlowApply(t *testing.T) {
 	// stepflow should have been completed after the extected number of iterations.
 	if !flow.IsCompleted(state) {
 		t.Fatalf("Unexpected state %s", state)
-	}
-
-	expectedExString := "[stepA stepB stepC]"
-	if fmt.Sprintf("%s", ex) != expectedExString {
-		t.Fatalf("Unexpected exchange. Expected: %s, Actual: %s", expectedExString, ex)
 	}
 }

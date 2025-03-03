@@ -73,7 +73,7 @@ func TestSteps(t *testing.T) {
 	var ex []string
 	var state []string
 
-	expectedIterations := 17
+	expectedIterations := 8
 	for i := range expectedIterations {
 		t.Logf("[%d] Applying stepflow on state %s", i, state)
 

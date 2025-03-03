@@ -20,14 +20,14 @@ type StepFlowItem interface {
 }
 
 type stepFlow struct {
-	rootItem       StepFlowItem
+	item           StepFlowItem
 	transitionsMap map[string][]Transition
 }
 
 func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
-	rootItem := Steps(nameItemPairs...).WithName(name)
+	item := Steps(nameItemPairs...).WithName(name)
 
-	transitions, err := rootItem.Transitions()
+	transitions, err := item.Transitions()
 	if err != nil {
 		return nil, err
 	}
@@ -37,26 +37,45 @@ func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
 		transitionsMap[t.Source()] = append(transitionsMap[t.Source()], t)
 	}
 
-	return &stepFlow{rootItem: rootItem, transitionsMap: transitionsMap}, nil
+	return &stepFlow{item: item, transitionsMap: transitionsMap}, nil
 }
 
+const MAX_APPLY_ONE_ITERATIONS = 100
+
 func (sf *stepFlow) Apply(ctx context.Context, state []string) ([]string, error) {
+	intermedieryState := state
+	var isExclusive bool
+	var err error
+
+	for range MAX_APPLY_ONE_ITERATIONS {
+		intermedieryState, isExclusive, err = sf.applyOne(ctx, intermedieryState)
+		if err != nil || isExclusive {
+			break
+		}
+	}
+
+	return intermedieryState, err
+}
+
+func (sf *stepFlow) applyOne(ctx context.Context, state []string) ([]string, bool, error) {
 	if sf.IsCompleted(state) {
-		return state, nil
+		return state, true, nil
 	}
 
 	stateWithDefault := state
 	if stateWithDefault == nil {
-		stateWithDefault = []string{StartCommand(sf.rootItem)}
+		stateWithDefault = []string{StartCommand(sf.item)}
 	}
 
 	for _, lastEvent := range stateWithDefault {
 		for _, t := range sf.transitionsMap[lastEvent] {
-			return t.Destination(ctx)
+			isExclusive := t.IsExclusive()
+			nextState, err := t.Destination(ctx)
+			return nextState, isExclusive, err
 		}
 	}
 
-	return nil, fmt.Errorf("unhnadled state %s", state)
+	return nil, true, fmt.Errorf("unhnadled state %s", state)
 }
 
 func (sf *stepFlow) IsCompleted(state []string) bool {
@@ -64,7 +83,7 @@ func (sf *stepFlow) IsCompleted(state []string) bool {
 		return false
 	}
 
-	return state[0] == CompletedEvent(sf.rootItem)
+	return state[0] == CompletedEvent(sf.item)
 }
 
 func eventString(item StepFlowItem, event string) string {
@@ -82,6 +101,7 @@ func CompletedEvent(item StepFlowItem) string {
 type Transition interface {
 	Source() string
 	Destination(context.Context) ([]string, error)
+	IsExclusive() bool
 }
 
 type staticTransition struct {
@@ -97,6 +117,10 @@ func (t staticTransition) Destination(_ context.Context) ([]string, error) {
 	return []string{t.destination}, nil
 }
 
+func (t staticTransition) IsExclusive() bool {
+	return false
+}
+
 type dynamicTransition struct {
 	source          string
 	destinationFunc func(context.Context) ([]string, error)
@@ -108,4 +132,8 @@ func (t dynamicTransition) Source() string {
 
 func (t dynamicTransition) Destination(ctx context.Context) ([]string, error) {
 	return t.destinationFunc(ctx)
+}
+
+func (t dynamicTransition) IsExclusive() bool {
+	return true
 }
