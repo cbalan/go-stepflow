@@ -8,7 +8,7 @@
 It was designed originally to be used in conjunction with kubebuilder/controller-runtime to build Kubernetes controllers, but it has no dependencies to Kubernetes. 
 
 ## Example
-A continous deployment pipeline step with the following structure may be implemened using the code snippets below. 
+A continuous deployment pipeline step with the following structure may be implemented using the code snippets below.
  * Trigger async actual state collection for a given application in a given environment.
  * Wait for the async operation to complete
  * Compare the desired state with the actual state. If change is required:
@@ -40,6 +40,17 @@ func DeployStepFlow() (stepflow.StepFlow, err)
       "validatePostDeployActualState", validatePostActuatState,
     )
 )
+
+...
+
+func createGitOpsVersionBump(ctx context.Context) error {
+  ... 
+
+  err := gitClient.CreatePullRequest(...)
+  ...
+  
+  return nil
+}
 ```
 
 ### Workflow initialization in the main function
