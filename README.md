@@ -40,6 +40,17 @@ func DeployStepFlow() (stepflow.StepFlow, err)
       "validatePostDeployActualState", validatePostActuatState,
     )
 )
+
+...
+
+func createGitOpsVersionBump(ctx context.Context) error {
+  ... 
+
+  err := gitClient.CreatePullRequest(...)
+  ...
+  
+  return nil
+}
 ```
 
 ### Workflow initialization in the main function
