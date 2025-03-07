@@ -8,9 +8,9 @@ type caseItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func Case(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
+func newCaseItem(item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return &caseItem{
-		item:          Steps(nameItemPairs...),
+		item:          item,
 		conditionFunc: conditionFunc,
 	}
 }

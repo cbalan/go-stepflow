@@ -8,8 +8,8 @@ type loopUntilItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func LoopUntil(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return &loopUntilItem{item: Steps(nameItemPairs...), conditionFunc: conditionFunc}
+func newLoopUntilItem(item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
+	return &loopUntilItem{item: item, conditionFunc: conditionFunc}
 }
 
 func (lui *loopUntilItem) Name() string {
