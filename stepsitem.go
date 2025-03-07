@@ -10,7 +10,7 @@ type stepsItem struct {
 	nameItemPairs []any
 }
 
-func Steps(nameItemPairs ...any) StepFlowItem {
+func newStepsItem(nameItemPairs []any) StepFlowItem {
 	return &stepsItem{nameItemPairs: nameItemPairs}
 }
 
@@ -91,7 +91,7 @@ func newNamedItem(name string, maybeItem any) (StepFlowItem, error) {
 		return maybeItemV.WithName(name), nil
 
 	case func(context.Context) error:
-		return &funcItem{name: name, activityFunc: maybeItemV}, nil
+		return newFuncItem(maybeItemV).WithName(name), nil
 
 	default:
 		return nil, fmt.Errorf("type %T is not supported", maybeItemV)

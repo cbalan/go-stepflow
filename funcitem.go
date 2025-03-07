@@ -7,6 +7,10 @@ type funcItem struct {
 	activityFunc func(context.Context) error
 }
 
+func newFuncItem(activityFunc func(context.Context) error) StepFlowItem {
+	return &funcItem{activityFunc: activityFunc}
+}
+
 func (fi *funcItem) Name() string {
 	return fi.name
 }

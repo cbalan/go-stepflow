@@ -7,7 +7,7 @@ type waitForItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func WaitFor(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
+func newWaitForItem(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return &waitForItem{conditionFunc: conditionFunc}
 }
 

@@ -39,8 +39,8 @@ type retryItem struct {
 	errorHandlerFunc func(ctx context.Context, err error) (bool, error)
 }
 
-func Retry(errorHandlerFunc func(ctx context.Context, err error) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return &retryItem{item: Steps(nameItemPairs...), errorHandlerFunc: errorHandlerFunc}
+func newRetryItem(item StepFlowItem, errorHandlerFunc func(ctx context.Context, err error) (bool, error)) StepFlowItem {
+	return &retryItem{item: item, errorHandlerFunc: errorHandlerFunc}
 }
 
 func (ri *retryItem) Name() string {

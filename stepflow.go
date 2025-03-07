@@ -24,9 +24,7 @@ type stepFlow struct {
 	transitionsMap map[string][]Transition
 }
 
-func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
-	item := Steps(nameItemPairs...).WithName(name)
-
+func newStepFlow(item StepFlowItem) (StepFlow, error) {
 	transitions, err := item.Transitions()
 	if err != nil {
 		return nil, err
