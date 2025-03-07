@@ -43,6 +43,11 @@ func TestSteps(t *testing.T) {
 		return nil
 	}
 
+	stepD := stepflow.Steps(
+		"stepA", stepA,
+		"stepB", stepB,
+		"stepA-bis", stepA)
+
 	logExchange := func(ctx context.Context) error {
 		ex, ok := ctx.Value(exContextKey).(*[]string)
 		if !ok {
@@ -58,10 +63,7 @@ func TestSteps(t *testing.T) {
 		"stepA", stepA,
 		"stepB", stepB,
 		"stepC", stepC,
-		"stepD", stepflow.Steps(
-			"stepA", stepA,
-			"stepB", stepB,
-			"stepA-bis", stepA),
+		"stepD", stepD,
 		"logExchange", logExchange,
 	)
 
