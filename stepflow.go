@@ -42,40 +42,43 @@ func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
 
 const ApplyOneMaxIterations = 100
 
-func (sf *stepFlow) Apply(ctx context.Context, state []string) ([]string, error) {
-	intermedieryState := state
+func (sf *stepFlow) Apply(ctx context.Context, oldState []string) ([]string, error) {
+	newState := withDefaultValue(oldState, []string{StartCommand(sf.item)})
 	var isExclusive bool
 	var err error
 
 	for range ApplyOneMaxIterations {
-		intermedieryState, isExclusive, err = sf.applyOne(ctx, intermedieryState)
+		newState, isExclusive, err = sf.applyOne(ctx, newState)
 		if err != nil || isExclusive {
 			break
 		}
 	}
 
-	return intermedieryState, err
+	return newState, err
 }
 
-func (sf *stepFlow) applyOne(ctx context.Context, state []string) ([]string, bool, error) {
-	if sf.IsCompleted(state) {
-		return state, true, nil
+func (sf *stepFlow) applyOne(ctx context.Context, oldState []string) ([]string, bool, error) {
+	if sf.IsCompleted(oldState) {
+		return oldState, true, nil
 	}
 
-	stateWithDefault := state
-	if stateWithDefault == nil {
-		stateWithDefault = []string{StartCommand(sf.item)}
-	}
-
-	for _, lastEvent := range stateWithDefault {
+	for _, lastEvent := range oldState {
 		for _, t := range sf.transitionsMap[lastEvent] {
 			isExclusive := t.IsExclusive()
-			nextState, err := t.Destination(ctx)
-			return nextState, isExclusive, err
+			newState, err := t.Destination(ctx)
+			return newState, isExclusive, err
 		}
 	}
 
-	return nil, true, fmt.Errorf("unhnadled state %s", state)
+	return nil, true, fmt.Errorf("unhnadled state %s", oldState)
+}
+
+func withDefaultValue(value []string, defaultValue []string) []string {
+	if value == nil {
+		return defaultValue
+	}
+
+	return value
 }
 
 func (sf *stepFlow) IsCompleted(state []string) bool {
