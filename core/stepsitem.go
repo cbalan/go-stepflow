@@ -1,4 +1,4 @@
-package stepflow
+package core
 
 type ItemsProvider interface {
 	Items(namespace string) ([]StepFlowItem, error)
@@ -9,7 +9,7 @@ type stepsItem struct {
 	itemsProvider ItemsProvider
 }
 
-func newStepsItem(itemsProvider ItemsProvider) StepFlowItem {
+func NewStepsItem(itemsProvider ItemsProvider) StepFlowItem {
 	return &stepsItem{itemsProvider: itemsProvider}
 }
 

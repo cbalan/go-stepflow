@@ -1,4 +1,4 @@
-package stepflow
+package core
 
 import "context"
 
@@ -8,7 +8,7 @@ type loopUntilItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func newLoopUntilItem(item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
+func NewLoopUntilItem(item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return &loopUntilItem{item: item, conditionFunc: conditionFunc}
 }
 
@@ -19,7 +19,7 @@ func (lui *loopUntilItem) Name() string {
 func (lui *loopUntilItem) WithName(name string) StepFlowItem {
 	return &loopUntilItem{
 		name:          name,
-		item:          lui.item.WithName(namespacedName(name, "loop")),
+		item:          lui.item.WithName(NamespacedName(name, "loop")),
 		conditionFunc: lui.conditionFunc,
 	}
 }

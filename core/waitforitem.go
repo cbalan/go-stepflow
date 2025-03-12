@@ -1,4 +1,4 @@
-package stepflow
+package core
 
 import "context"
 
@@ -7,7 +7,7 @@ type waitForItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func newWaitForItem(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
+func NewWaitForItem(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return &waitForItem{conditionFunc: conditionFunc}
 }
 

@@ -1,4 +1,4 @@
-package stepflow
+package core
 
 import "context"
 
@@ -39,7 +39,7 @@ type retryItem struct {
 	errorHandlerFunc func(ctx context.Context, err error) (bool, error)
 }
 
-func newRetryItem(item StepFlowItem, errorHandlerFunc func(ctx context.Context, err error) (bool, error)) StepFlowItem {
+func NewRetryItem(item StepFlowItem, errorHandlerFunc func(ctx context.Context, err error) (bool, error)) StepFlowItem {
 	return &retryItem{item: item, errorHandlerFunc: errorHandlerFunc}
 }
 

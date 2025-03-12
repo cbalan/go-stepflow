@@ -1,4 +1,4 @@
-package stepflow
+package core
 
 import "context"
 
@@ -7,7 +7,7 @@ type funcItem struct {
 	activityFunc func(context.Context) error
 }
 
-func newFuncItem(activityFunc func(context.Context) error) StepFlowItem {
+func NewFuncItem(activityFunc func(context.Context) error) StepFlowItem {
 	return &funcItem{activityFunc: activityFunc}
 }
 
