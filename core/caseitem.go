@@ -1,4 +1,4 @@
-package stepflow
+package core
 
 import "context"
 
@@ -8,7 +8,7 @@ type caseItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func newCaseItem(item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
+func NewCaseItem(item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return &caseItem{
 		item:          item,
 		conditionFunc: conditionFunc,
@@ -22,7 +22,7 @@ func (ci *caseItem) Name() string {
 func (ci *caseItem) WithName(name string) StepFlowItem {
 	return &caseItem{
 		name:          name,
-		item:          ci.item.WithName(namespacedName(name, "case")),
+		item:          ci.item.WithName(NamespacedName(name, "case")),
 		conditionFunc: ci.conditionFunc,
 	}
 }
