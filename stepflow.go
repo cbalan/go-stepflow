@@ -20,23 +20,23 @@ type StepFlowItem interface {
 }
 
 func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
-	return newStepFlow(newStepsItem(nameItemPairs).WithName(name))
+	return newStepFlow(Steps(nameItemPairs...).WithName(name))
 }
 
 func Steps(nameItemPairs ...any) StepFlowItem {
-	return newStepsItem(nameItemPairs)
+	return newStepsItem(newNameItemPairsProvider(nameItemPairs))
 }
 
 func Case(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return newCaseItem(newStepsItem(nameItemPairs), conditionFunc)
+	return newCaseItem(Steps(nameItemPairs...), conditionFunc)
 }
 
 func LoopUntil(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return newLoopUntilItem(newStepsItem(nameItemPairs), conditionFunc)
+	return newLoopUntilItem((Steps(nameItemPairs...)), conditionFunc)
 }
 
 func Retry(errorHandlerFunc func(ctx context.Context, err error) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return newRetryItem(newStepsItem(nameItemPairs), errorHandlerFunc)
+	return newRetryItem(Steps(nameItemPairs...), errorHandlerFunc)
 }
 
 func WaitFor(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
@@ -161,4 +161,62 @@ func (t dynamicTransition) Destination(ctx context.Context) ([]string, error) {
 
 func (t dynamicTransition) IsExclusive() bool {
 	return true
+}
+
+type nameItemPairsProvider struct {
+	nameItemPairs []any
+}
+
+func newNameItemPairsProvider(nameItemPairs []any) *nameItemPairsProvider {
+	return &nameItemPairsProvider{nameItemPairs: nameItemPairs}
+}
+
+func (ni *nameItemPairsProvider) Items(namespace string) ([]StepFlowItem, error) {
+	if len(ni.nameItemPairs)%2 != 0 {
+		return nil, fmt.Errorf("un-even nameItemsPair")
+	}
+
+	seenNames := make(map[string]bool)
+
+	var items []StepFlowItem
+	for i := 0; i < len(ni.nameItemPairs); i += 2 {
+		maybeName := ni.nameItemPairs[i]
+		maybeItem := ni.nameItemPairs[i+1]
+
+		name, ok := maybeName.(string)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type %T used as string", maybeName)
+		}
+
+		if seenNames[name] {
+			return nil, fmt.Errorf("name %s must be unique in the current context", name)
+		}
+		seenNames[name] = true
+
+		item, err := newNamedItem(namespacedName(namespace, name), maybeItem)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create new named step flow item due to %w", err)
+		}
+
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+
+func namespacedName(namespace string, name string) string {
+	return fmt.Sprintf("%s/%s", namespace, name)
+}
+
+func newNamedItem(name string, maybeItem any) (StepFlowItem, error) {
+	switch maybeItemV := maybeItem.(type) {
+	case StepFlowItem:
+		return maybeItemV.WithName(name), nil
+
+	case func(context.Context) error:
+		return newFuncItem(maybeItemV).WithName(name), nil
+
+	default:
+		return nil, fmt.Errorf("type %T is not supported", maybeItemV)
+	}
 }
