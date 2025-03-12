@@ -7,27 +7,30 @@ import (
 	"github.com/cbalan/go-stepflow/core"
 )
 
-func NewStepFlow(name string, nameItemPairs ...any) (core.StepFlow, error) {
+type StepFlow = core.StepFlow
+type StepFlowItem = core.StepFlowItem
+
+func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
 	return core.NewStepFlow(Steps(nameItemPairs...).WithName(name))
 }
 
-func Steps(nameItemPairs ...any) core.StepFlowItem {
+func Steps(nameItemPairs ...any) StepFlowItem {
 	return core.NewStepsItem(newNameItemPairsProvider(nameItemPairs))
 }
 
-func Case(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) core.StepFlowItem {
+func Case(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
 	return core.NewCaseItem(Steps(nameItemPairs...), conditionFunc)
 }
 
-func LoopUntil(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) core.StepFlowItem {
+func LoopUntil(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
 	return core.NewLoopUntilItem((Steps(nameItemPairs...)), conditionFunc)
 }
 
-func Retry(errorHandlerFunc func(ctx context.Context, err error) (bool, error), nameItemPairs ...any) core.StepFlowItem {
+func Retry(errorHandlerFunc func(ctx context.Context, err error) (bool, error), nameItemPairs ...any) StepFlowItem {
 	return core.NewRetryItem(Steps(nameItemPairs...), errorHandlerFunc)
 }
 
-func WaitFor(conditionFunc func(ctx context.Context) (bool, error)) core.StepFlowItem {
+func WaitFor(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return core.NewWaitForItem(conditionFunc)
 }
 
@@ -39,14 +42,14 @@ func newNameItemPairsProvider(nameItemPairs []any) *nameItemPairsProvider {
 	return &nameItemPairsProvider{nameItemPairs: nameItemPairs}
 }
 
-func (ni *nameItemPairsProvider) Items(namespace string) ([]core.StepFlowItem, error) {
+func (ni *nameItemPairsProvider) Items(namespace string) ([]StepFlowItem, error) {
 	if len(ni.nameItemPairs)%2 != 0 {
 		return nil, fmt.Errorf("un-even nameItemsPair")
 	}
 
 	seenNames := make(map[string]bool)
 
-	var items []core.StepFlowItem
+	var items []StepFlowItem
 	for i := 0; i < len(ni.nameItemPairs); i += 2 {
 		maybeName := ni.nameItemPairs[i]
 		maybeItem := ni.nameItemPairs[i+1]
@@ -72,9 +75,9 @@ func (ni *nameItemPairsProvider) Items(namespace string) ([]core.StepFlowItem, e
 	return items, nil
 }
 
-func newNamedItem(name string, maybeItem any) (core.StepFlowItem, error) {
+func newNamedItem(name string, maybeItem any) (StepFlowItem, error) {
 	switch maybeItemV := maybeItem.(type) {
-	case core.StepFlowItem:
+	case StepFlowItem:
 		return maybeItemV.WithName(name), nil
 
 	case func(context.Context) error:
