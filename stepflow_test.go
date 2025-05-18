@@ -226,7 +226,7 @@ func TestRetry(t *testing.T) {
 		t.Logf("[%d] Stepflow new state: %s", i, state)
 	}
 
-	// stepflow should have been completed after the extected number of iterations.
+	// stepflow should have been completed after the expected number of iterations.
 	if !flow.IsCompleted(state) {
 		t.Fatalf("Unexpected state %s", state)
 	}
@@ -292,7 +292,7 @@ func TestLoopUntil(t *testing.T) {
 		t.Logf("[%d] Stepflow new state: %s", i, state)
 	}
 
-	// stepflow should have been completed after the extected number of iterations.
+	// stepflow should have been completed after the expected number of iterations.
 	if !flow.IsCompleted(state) {
 		t.Fatalf("Unexpected state %s", state)
 	}
@@ -351,7 +351,7 @@ func TestCase(t *testing.T) {
 		t.Logf("[%d] Stepflow new state: %s", i, state)
 	}
 
-	// stepflow should have been completed after the extected number of iterations.
+	// stepflow should have been completed after the expected number of iterations.
 	if !flow.IsCompleted(state) {
 		t.Fatalf("Unexpected state %s", state)
 	}
@@ -360,4 +360,81 @@ func TestCase(t *testing.T) {
 	if fmt.Sprintf("%s", ex) != expectedExString {
 		t.Fatalf("Unexpected exchange. Expected: %s, Actual: %s", expectedExString, ex)
 	}
+}
+
+func TestGenericExample(t *testing.T) {
+	type contextKey string
+	const exContextKey = contextKey("ex")
+
+	doLog := func(message string) func(ctx context.Context) error {
+		return func(ctx context.Context) error {
+			ex, ok := ctx.Value(exContextKey).(*[]string)
+			if !ok {
+				return fmt.Errorf("failed to get exchange from context")
+			}
+			*ex = append(*ex, message)
+
+			t.Log(message)
+			return nil
+		}
+	}
+
+	isGetActualStateCompleted := func(message string) func(ctx context.Context) (bool, error) {
+		return func(ctx context.Context) (bool, error) {
+			return true, nil
+		}
+	}
+
+	shouldDeploy := func(ctx context.Context) (bool, error) {
+		return true, nil
+	}
+
+	isGitOpsVersionBumpAccepted := func(ctx context.Context) (bool, error) {
+		return true, nil
+	}
+
+	isVersionLiveSuccessfully := func(ctx context.Context) (bool, error) {
+		return true, nil
+	}
+
+	flow, err := stepflow.NewStepFlow("deploy/v1", stepflow.Steps().
+		Do("getPreActualState", doLog("preDeploy")).
+		WaitFor("preActualState", isGetActualStateCompleted("preDeploy")).
+		Case("shouldDeploy", shouldDeploy, stepflow.Steps().
+			Do("createDeployRequest", doLog("createGitOpsVersionBump")).
+			WaitFor("acceptedDeployRequest", isGitOpsVersionBumpAccepted).
+			WaitFor("monitorDeploymentProgress", isVersionLiveSuccessfully).
+			Do("getPostActualState", doLog("postDeploy")).
+			WaitFor("postActualState", isGetActualStateCompleted("postDeploy")).
+			Do("validatePostDeployActualState", doLog("validatePostActualState"))))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var ex []string
+	var state []string
+
+	expectedIterations := 10
+	for i := range expectedIterations {
+		t.Logf("[%d] Applying stepflow on state %s", i, state)
+
+		ctx := context.WithValue(context.TODO(), exContextKey, &ex)
+		state, err = flow.Apply(ctx, state)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Logf("[%d] Stepflow new state: %s", i, state)
+	}
+
+	// stepflow should have been completed after the expected number of iterations.
+	if !flow.IsCompleted(state) {
+		t.Fatalf("Unexpected state %s", state)
+	}
+
+	expectedExString := "[preDeploy createGitOpsVersionBump postDeploy validatePostActualState]"
+	if fmt.Sprintf("%s", ex) != expectedExString {
+		t.Fatalf("Unexpected exchange. Expected: %s, Actual: %s", expectedExString, ex)
+	}
+
 }
