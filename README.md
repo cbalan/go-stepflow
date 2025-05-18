@@ -33,7 +33,6 @@ func DeployStepFlow() (stepflow.StepFlow, error) {
 	return stepflow.NewStepFlow("deploy/v1", stepflow.Steps().
 		Do("getPreActualState", getActualState("preDeploy")).
 		WaitFor("preActualState", isGetActualStateCompleted("preDeploy")).
-
 		Case("shouldDeploy", shouldDeploy, stepflow.Steps().
 			Do("createDeployRequest", createGitOpsVersionBump).
 			WaitFor("acceptedDeployRequest", isGitOpsVersionBumpAccepted).

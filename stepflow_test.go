@@ -64,7 +64,6 @@ func TestSteps(t *testing.T) {
 		Do("stepC", stepC).
 		Steps("stepD", stepD).
 		Do("logExchange", logExchange))
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +125,6 @@ func TestWaitFor(t *testing.T) {
 	flow, err := stepflow.NewStepFlow("TestWaitFor", stepflow.Steps().
 		WaitFor("growEx", exLenIsAcceptable).
 		Do("logExchange", logExchange))
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +156,7 @@ func TestWaitFor(t *testing.T) {
 	}
 }
 
-func TestBuilderRetry(t *testing.T) {
+func TestRetry(t *testing.T) {
 	type contextKey string
 	const exContextKey = contextKey("ex")
 
@@ -234,7 +232,7 @@ func TestBuilderRetry(t *testing.T) {
 	}
 }
 
-func TestBuilderLoopUntil(t *testing.T) {
+func TestLoopUntil(t *testing.T) {
 	type contextKey string
 	const exContextKey = contextKey("ex")
 
@@ -300,7 +298,7 @@ func TestBuilderLoopUntil(t *testing.T) {
 	}
 }
 
-func TestBuilderCase(t *testing.T) {
+func TestCase(t *testing.T) {
 	type contextKey string
 	const exContextKey = contextKey("ex")
 
