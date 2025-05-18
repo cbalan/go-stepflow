@@ -23,23 +23,24 @@ A continuous deployment pipeline step with the following structure may be implem
 ### Workflow definition
 
 ```go
-func DeployStepFlow() (stepflow.StepFlow, err)
-  return stepflow.NewStepFlow("deploy/v1",
-    "getPreActualState", getActualState("preDeploy"),
-    "waitForPreActualState", stepflow.WaitFor(isGetActualStateCompleted("preDepoy"))
+package demo
 
-    "deploy", stepflow.Case(shouldDeploy, 
-      "createDeployRequest", createGitOpsVersionBump,
-      "waitForAcceptedDeployRequest", stepflow.WaitFor(isGitOpsVersionBumpAccepted),
-      
-      "monitorDeploymentProgress", stepflow.WaitFor(isVersionLiveSuccessfully),
-      
-      "getPostActualState", getActualState("postDeploy"),
-      "waitForPostActualState", stepflow.WaitFor(isGetActualStateCompleted("postDepoy"))
-
-      "validatePostDeployActualState", validatePostActuatState,
-    )
+import (
+	"github.com/cbalan/go-stepflow"
 )
+
+func DeployStepFlow() (stepflow.StepFlow, error) {
+	return stepflow.NewStepFlow("deploy/v1", stepflow.Steps().
+		Do("getPreActualState", getActualState("preDeploy")).
+		WaitFor("preActualState", isGetActualStateCompleted("preDeploy")).
+		Case("shouldDeploy", shouldDeploy, stepflow.Steps().
+			Do("createDeployRequest", createGitOpsVersionBump).
+			WaitFor("acceptedDeployRequest", isGitOpsVersionBumpAccepted).
+			WaitFor("monitorDeploymentProgress", isVersionLiveSuccessfully).
+			Do("getPostActualState", getActualState("postDeploy")).
+			WaitFor("postActualState", isGetActualStateCompleted("postDeploy")).
+			Do("validatePostDeployActualState", validatePostActuatState)))
+}
 
 ...
 
@@ -64,7 +65,7 @@ func createGitOpsVersionBump(ctx context.Context) error {
 // Prepare execution context
 applyCtx, err := setFlowApplyContext(ctx)
 
-// Load previos state
+// Load previous state
 previousState, err := getState(ctx)
 
 // Execute workflow iteration 

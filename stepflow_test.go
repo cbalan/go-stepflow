@@ -3,9 +3,8 @@ package stepflow_test
 import (
 	"context"
 	"fmt"
-	"testing"
-
 	"github.com/cbalan/go-stepflow"
+	"testing"
 )
 
 func TestSteps(t *testing.T) {
@@ -43,10 +42,10 @@ func TestSteps(t *testing.T) {
 		return nil
 	}
 
-	stepD := stepflow.Steps(
-		"stepA", stepA,
-		"stepB", stepB,
-		"stepA-bis", stepA)
+	stepD := stepflow.Steps().
+		Do("stepA", stepA).
+		Do("stepB", stepB).
+		Do("stepA-bis", stepA)
 
 	logExchange := func(ctx context.Context) error {
 		ex, ok := ctx.Value(exContextKey).(*[]string)
@@ -59,14 +58,12 @@ func TestSteps(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow("TestSteps",
-		"stepA", stepA,
-		"stepB", stepB,
-		"stepC", stepC,
-		"stepD", stepD,
-		"logExchange", logExchange,
-	)
-
+	flow, err := stepflow.NewStepFlow("TestSteps", stepflow.Steps().
+		Do("stepA", stepA).
+		Do("stepB", stepB).
+		Do("stepC", stepC).
+		Steps("stepD", stepD).
+		Do("logExchange", logExchange))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +85,7 @@ func TestSteps(t *testing.T) {
 		t.Logf("[%d] Stepflow new state: %s", i, state)
 	}
 
-	// stepflow should have been completed after the extected number of iterations.
+	// stepflow should have been completed after the expected number of iterations.
 	if !flow.IsCompleted(state) {
 		t.Fatalf("Unexpected state %s", state)
 	}
@@ -125,10 +122,9 @@ func TestWaitFor(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow("TestWaitFor",
-		"growEx", stepflow.WaitFor(exLenIsAcceptable),
-		"logExchange", logExchange,
-	)
+	flow, err := stepflow.NewStepFlow("TestWaitFor", stepflow.Steps().
+		WaitFor("growEx", exLenIsAcceptable).
+		Do("logExchange", logExchange))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +145,7 @@ func TestWaitFor(t *testing.T) {
 		t.Logf("[%d] Stepflow new state: %s", i, state)
 	}
 
-	// stepflow should have been completed after the extected number of iterations.
+	// stepflow should have been completed after the expected number of iterations.
 	if !flow.IsCompleted(state) {
 		t.Fatalf("Unexpected state %s", state)
 	}
@@ -203,15 +199,13 @@ func TestRetry(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow("TestRetry",
-		"logInitialExchange", logExchange,
-		"growEx", stepflow.Retry(logErrorAndRetry,
-			"addA", addA,
-			"stepWithError", returnErrorSometimes,
-			"logExchange", logExchange,
-		),
-		"logExchange", logExchange,
-	)
+	flow, err := stepflow.NewStepFlow("TestRetry", stepflow.Steps().
+		Do("logInitialExchange", logExchange).
+		Retry("growEx", logErrorAndRetry, stepflow.Steps().
+			Do("addA", addA).
+			Do("stepWithError", returnErrorSometimes).
+			Do("logExchange", logExchange)).
+		Do("logExchange", logExchange))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,14 +266,12 @@ func TestLoopUntil(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow("TestLoopUntil",
-		"addA", addA,
-		"growEx", stepflow.LoopUntil(exLenIsAcceptable,
-			"addA", addA,
-			"logExchange", logExchange,
-		),
-		"logExchange", logExchange,
-	)
+	flow, err := stepflow.NewStepFlow("TestLoopUntil", stepflow.Steps().
+		Do("addA", addA).
+		LoopUntil("growEx", exLenIsAcceptable, stepflow.Steps().
+			Do("addA", addA).
+			Do("logExchange", logExchange)).
+		Do("logExchange", logExchange))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,17 +323,14 @@ func TestCase(t *testing.T) {
 		return false, nil
 	}
 
-	flow, err := stepflow.NewStepFlow("TestCase",
-		"beforeTrueCase", doLog("beforeTrueCase"),
-		"ifTrue", stepflow.Case(alwaysTrue,
-			"stepA", doLog("stepA"),
-			"stepB", doLog("stepB"),
-		),
-		"ifFalse", stepflow.Case(alwaysFalse,
-			"ifFalseBranch", doLog("this will not be executed"),
-		),
-		"afterIfFalse", doLog("afterIfFalse"),
-	)
+	flow, err := stepflow.NewStepFlow("TestCase", stepflow.Steps().
+		Do("beforeTrueCase", doLog("beforeTrueCase")).
+		Case("ifTrue", alwaysTrue, stepflow.Steps().
+			Do("stepA", doLog("stepA")).
+			Do("stepB", doLog("stepB"))).
+		Case("ifFalse", alwaysFalse, stepflow.Steps().
+			Do("ifFalseBranch", doLog("this will not be executed"))).
+		Do("afterIfFalse", doLog("afterIfFalse")))
 	if err != nil {
 		t.Fatal(err)
 	}
