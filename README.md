@@ -26,7 +26,7 @@ A continuous deployment pipeline step with the following structure may be implem
 package demo
 
 import (
-	stepflow "github.com/cbalan/go-stepflow/builder"
+	"github.com/cbalan/go-stepflow"
 )
 
 func DeployStepFlow() (stepflow.StepFlow, error) {

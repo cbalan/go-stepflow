@@ -2,88 +2,148 @@ package stepflow
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/cbalan/go-stepflow/core"
 )
 
 type StepFlow = core.StepFlow
 type StepFlowItem = core.StepFlowItem
 
-func NewStepFlow(name string, nameItemPairs ...any) (StepFlow, error) {
-	return core.NewStepFlow(Steps(nameItemPairs...).WithName(name))
+type StepFlowItemizer interface {
+	StepFlowItem() (StepFlowItem, error)
 }
 
-func Steps(nameItemPairs ...any) StepFlowItem {
-	return core.NewStepsItem(newNameItemPairsProvider(nameItemPairs))
+type StepSpec interface {
+	StepFlowItem() (StepFlowItem, error)
+	Steps(name string, stepSpec StepSpec) StepSpec
+	Do(name string, activityFunc func(ctx context.Context) error) StepSpec
+	WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) StepSpec
+	Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), item StepFlowItemizer) StepSpec
+	LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), item StepFlowItemizer) StepSpec
+	Case(name string, conditionFunc func(ctx context.Context) (bool, error), item StepFlowItemizer) StepSpec
 }
 
-func Case(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return core.NewCaseItem(Steps(nameItemPairs...), conditionFunc)
+type stepSpecImpl struct {
+	items []StepFlowItemizer
 }
 
-func LoopUntil(conditionFunc func(ctx context.Context) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return core.NewLoopUntilItem((Steps(nameItemPairs...)), conditionFunc)
+type stepFlowItemizerImpl struct {
+	stepFlowItemFunc func() (StepFlowItem, error)
 }
 
-func Retry(errorHandlerFunc func(ctx context.Context, err error) (bool, error), nameItemPairs ...any) StepFlowItem {
-	return core.NewRetryItem(Steps(nameItemPairs...), errorHandlerFunc)
+func (s *stepFlowItemizerImpl) StepFlowItem() (StepFlowItem, error) {
+	return s.stepFlowItemFunc()
 }
 
-func WaitFor(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
-	return core.NewWaitForItem(conditionFunc)
-}
-
-type nameItemPairsProvider struct {
-	nameItemPairs []any
-}
-
-func newNameItemPairsProvider(nameItemPairs []any) *nameItemPairsProvider {
-	return &nameItemPairsProvider{nameItemPairs: nameItemPairs}
-}
-
-func (ni *nameItemPairsProvider) Items(namespace string) ([]StepFlowItem, error) {
-	if len(ni.nameItemPairs)%2 != 0 {
-		return nil, fmt.Errorf("un-even nameItemsPair")
-	}
-
-	seenNames := make(map[string]bool)
-
+// Items implements core.ItemsProvider interface.
+func (s *stepSpecImpl) Items(namespace string) ([]StepFlowItem, error) {
 	var items []StepFlowItem
-	for i := 0; i < len(ni.nameItemPairs); i += 2 {
-		maybeName := ni.nameItemPairs[i]
-		maybeItem := ni.nameItemPairs[i+1]
 
-		name, ok := maybeName.(string)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type %T used as string", maybeName)
-		}
-
-		if seenNames[name] {
-			return nil, fmt.Errorf("name %s must be unique in the current context", name)
-		}
-		seenNames[name] = true
-
-		item, err := newNamedItem(core.NamespacedName(namespace, name), maybeItem)
+	for _, item := range s.items {
+		actualItem, err := item.StepFlowItem()
 		if err != nil {
-			return nil, fmt.Errorf("failed to create new named step flow item due to %w", err)
+			return nil, err
 		}
 
-		items = append(items, item)
+		items = append(items, actualItem.WithName(core.NamespacedName(namespace, actualItem.Name())))
 	}
 
 	return items, nil
 }
 
-func newNamedItem(name string, maybeItem any) (StepFlowItem, error) {
-	switch maybeItemV := maybeItem.(type) {
-	case StepFlowItem:
-		return maybeItemV.WithName(name), nil
+// StepFlowItem implements StepFlowItemizer interface.
+func (s *stepSpecImpl) StepFlowItem() (StepFlowItem, error) {
+	return core.NewStepsItem(s), nil
+}
 
-	case func(context.Context) error:
-		return core.NewFuncItem(maybeItemV).WithName(name), nil
+// Steps implements StepSpec interface
+func (s *stepSpecImpl) Steps(name string, stepSpec StepSpec) StepSpec {
+	stepsItem := &stepFlowItemizerImpl{func() (StepFlowItem, error) {
+		actualItem, err := stepSpec.StepFlowItem()
+		if err != nil {
+			return nil, err
+		}
 
-	default:
-		return nil, fmt.Errorf("type %T is not supported", maybeItemV)
+		return actualItem.WithName(name), nil
+	}}
+
+	s.items = append(s.items, stepsItem)
+	return s
+}
+
+// Do implements StepSpec interface
+func (s *stepSpecImpl) Do(name string, activityFunc func(ctx context.Context) error) StepSpec {
+	item := &stepFlowItemizerImpl{func() (StepFlowItem, error) {
+		return core.NewFuncItem(activityFunc).WithName(name), nil
+	}}
+
+	s.items = append(s.items, item)
+	return s
+}
+
+// WaitFor implements StepSpec interface
+func (s *stepSpecImpl) WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) StepSpec {
+	item := &stepFlowItemizerImpl{func() (StepFlowItem, error) {
+		return core.NewWaitForItem(conditionFunc).WithName(name), nil
+	}}
+
+	s.items = append(s.items, item)
+	return s
+}
+
+// Retry implements StepSpec interface
+func (s *stepSpecImpl) Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), item StepFlowItemizer) StepSpec {
+	retryItem := &stepFlowItemizerImpl{func() (StepFlowItem, error) {
+		actualItem, err := item.StepFlowItem()
+		if err != nil {
+			return nil, err
+		}
+
+		return core.NewRetryItem(actualItem, errHandlerFunc).WithName(name), nil
+	}}
+
+	s.items = append(s.items, retryItem)
+	return s
+}
+
+// LoopUntil implements StepSpec interface
+func (s *stepSpecImpl) LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), item StepFlowItemizer) StepSpec {
+	loopUntilItem := &stepFlowItemizerImpl{func() (StepFlowItem, error) {
+		actualItem, err := item.StepFlowItem()
+		if err != nil {
+			return nil, err
+		}
+
+		return core.NewLoopUntilItem(actualItem, conditionFunc).WithName(name), nil
+	}}
+
+	s.items = append(s.items, loopUntilItem)
+	return s
+}
+
+// Case implements StepSpec interface
+func (s *stepSpecImpl) Case(name string, conditionFunc func(ctx context.Context) (bool, error), item StepFlowItemizer) StepSpec {
+	caseItem := &stepFlowItemizerImpl{func() (StepFlowItem, error) {
+		actualItem, err := item.StepFlowItem()
+		if err != nil {
+			return nil, err
+		}
+
+		return core.NewCaseItem(actualItem, conditionFunc).WithName(name), nil
+	}}
+
+	s.items = append(s.items, caseItem)
+	return s
+}
+
+func Steps() StepSpec {
+	return &stepSpecImpl{}
+}
+
+func NewStepFlow(name string, item StepFlowItemizer) (StepFlow, error) {
+	actualItem, err := item.StepFlowItem()
+	if err != nil {
+		return nil, err
 	}
+
+	return core.NewStepFlow(actualItem.WithName(name))
 }
