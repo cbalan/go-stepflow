@@ -1,7 +1,9 @@
 package core
 
+import "fmt"
+
 type ItemsProvider interface {
-	Items(namespace string) ([]StepFlowItem, error)
+	Items() ([]StepFlowItem, error)
 }
 
 type stepsItem struct {
@@ -22,24 +24,33 @@ func (si *stepsItem) WithName(name string) StepFlowItem {
 }
 
 func (si *stepsItem) Transitions() ([]Transition, error) {
-	items, err := si.itemsProvider.Items(si.name)
+	items, err := si.itemsProvider.Items()
 	if err != nil {
 		return nil, err
 	}
+
+	seenNames := make(map[string]bool)
 
 	lastEvent := StartCommand(si)
 
 	var transitions []Transition
 	for _, item := range items {
-		transitions = append(transitions, staticTransition{source: lastEvent, destination: StartCommand(item)})
+		nsItem := item.WithName(NamespacedName(si.Name(), item.Name()))
 
-		itemTransitions, err := item.Transitions()
+		if seenNames[nsItem.Name()] {
+			return nil, fmt.Errorf("name %s must be unique in the current context", nsItem.Name())
+		}
+		seenNames[nsItem.Name()] = true
+
+		transitions = append(transitions, staticTransition{source: lastEvent, destination: StartCommand(nsItem)})
+
+		itemTransitions, err := nsItem.Transitions()
 		if err != nil {
 			return nil, err
 		}
 		transitions = append(transitions, itemTransitions...)
 
-		lastEvent = CompletedEvent(item)
+		lastEvent = CompletedEvent(nsItem)
 	}
 
 	transitions = append(transitions, staticTransition{source: lastEvent, destination: CompletedEvent(si)})

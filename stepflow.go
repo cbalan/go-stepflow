@@ -22,14 +22,8 @@ type StepSpec interface {
 type stepSpecImpl []StepFlowItem
 
 // Items implements core.ItemsProvider interface.
-func (s stepSpecImpl) Items(namespace string) ([]StepFlowItem, error) {
-	var items []StepFlowItem
-
-	for _, item := range s {
-		items = append(items, item.WithName(core.NamespacedName(namespace, item.Name())))
-	}
-
-	return items, nil
+func (s stepSpecImpl) Items() ([]StepFlowItem, error) {
+	return s, nil
 }
 
 // Steps implements StepSpec interface.
