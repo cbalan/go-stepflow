@@ -57,7 +57,7 @@ func (s stepSpecImpl) Case(name string, conditionFunc func(ctx context.Context) 
 }
 
 func Steps() StepSpec {
-	return make(stepSpecImpl, 0)
+	return stepSpecImpl{}
 }
 
 func NewStepFlow(name string, stepSpec StepSpec) (StepFlow, error) {
