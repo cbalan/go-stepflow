@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 type StepFlow interface {
@@ -12,25 +11,21 @@ type StepFlow interface {
 }
 
 type Scope interface {
-	Parent() Scope
-	Name() string
+	String() string
 }
 
-type scopeImpl struct {
-	name   string
-	parent Scope
-}
+type scopeImpl string
 
 func NewItemScope(item StepFlowItem, parent Scope) Scope {
-	return &scopeImpl{parent: parent, name: item.Name()}
+	if parent == nil {
+		return scopeImpl(item.Name())
+	}
+
+	return scopeImpl(parent.String() + "/" + item.Name())
 }
 
-func (s *scopeImpl) Name() string {
-	return s.name
-}
-
-func (s *scopeImpl) Parent() Scope {
-	return s.parent
+func (s scopeImpl) String() string {
+	return string(s)
 }
 
 type StepFlowItem interface {
@@ -108,32 +103,7 @@ func (sf *stepFlow) IsCompleted(state []string) bool {
 }
 
 func eventString(event string, scope Scope) string {
-	var sb strings.Builder
-
-	sb.WriteString(event)
-	sb.WriteString(":")
-
-	names := scopeNames(scope)
-	if len(names) > 0 {
-		sb.WriteString(names[len(names)-1])
-		if len(names) > 1 {
-			for i := len(names) - 2; i >= 0; i-- {
-				sb.WriteString("/")
-				sb.WriteString(names[i])
-			}
-		}
-	}
-
-	return sb.String()
-}
-
-func scopeNames(scope Scope) []string {
-	var names []string
-	for scope != nil {
-		names = append(names, scope.Name())
-		scope = scope.Parent()
-	}
-	return names
+	return event + ":" + scope.String()
 }
 
 func StartCommand(scope Scope) string {
