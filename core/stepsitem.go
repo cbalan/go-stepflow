@@ -43,14 +43,14 @@ func (si *stepsItem) Transitions(parent Scope) (Scope, []Transition, error) {
 		}
 		seenNames[item.Name()] = true
 
-		transitions = append(transitions, staticTransition{source: lastEvent, destination: StartCommand(itemScope)})
+		transitions = append(transitions, NewStaticTransition(lastEvent, StartCommand(itemScope)))
 
 		transitions = append(transitions, itemTransitions...)
 
 		lastEvent = CompletedEvent(itemScope)
 	}
 
-	transitions = append(transitions, staticTransition{source: lastEvent, destination: CompletedEvent(scope)})
+	transitions = append(transitions, NewStaticTransition(lastEvent, CompletedEvent(scope)))
 
 	return scope, transitions, nil
 }

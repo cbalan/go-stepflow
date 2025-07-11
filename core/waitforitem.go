@@ -18,20 +18,20 @@ func (wfi *waitForItem) Name() string {
 func (wfi *waitForItem) Transitions(parent Scope) (Scope, []Transition, error) {
 	scope := NewItemScope(wfi, parent)
 
-	destinationFunc := func(ctx context.Context) ([]string, error) {
+	destinationFunc := func(ctx context.Context) ([]Event, error) {
 		completed, err := wfi.conditionFunc(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		if completed {
-			return []string{CompletedEvent(scope)}, nil
+			return []Event{CompletedEvent(scope)}, nil
 		}
 
-		return []string{StartCommand(scope)}, nil
+		return []Event{StartCommand(scope)}, nil
 	}
 
-	transitions := []Transition{dynamicTransition{source: StartCommand(scope), destinationFunc: destinationFunc}}
+	transitions := []Transition{NewDynamicTransition(StartCommand(scope), destinationFunc)}
 
 	return scope, transitions, nil
 }

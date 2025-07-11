@@ -28,22 +28,22 @@ func (ci *caseItem) Transitions(parent Scope) (Scope, []Transition, error) {
 		return nil, nil, err
 	}
 
-	destinationFunc := func(ctx context.Context) ([]string, error) {
+	destinationFunc := func(ctx context.Context) ([]Event, error) {
 		shouldStart, err := ci.conditionFunc(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		if shouldStart {
-			return []string{StartCommand(itemScope)}, nil
+			return []Event{StartCommand(itemScope)}, nil
 		}
 
-		return []string{CompletedEvent(scope)}, nil
+		return []Event{CompletedEvent(scope)}, nil
 	}
 
 	transitions := []Transition{
-		dynamicTransition{source: StartCommand(scope), destinationFunc: destinationFunc},
-		staticTransition{source: CompletedEvent(itemScope), destination: CompletedEvent(scope)},
+		NewDynamicTransition(StartCommand(scope), destinationFunc),
+		NewStaticTransition(CompletedEvent(itemScope), CompletedEvent(scope)),
 	}
 
 	transitions = append(transitions, itemTransitions...)

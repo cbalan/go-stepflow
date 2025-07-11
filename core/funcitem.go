@@ -18,13 +18,13 @@ func (fi *funcItem) Name() string {
 func (fi *funcItem) Transitions(parent Scope) (Scope, []Transition, error) {
 	scope := NewItemScope(fi, parent)
 
-	destinationFunc := func(ctx context.Context) ([]string, error) {
+	destinationFunc := func(ctx context.Context) ([]Event, error) {
 		if err := fi.activityFunc(ctx); err != nil {
 			return nil, err
 		}
 
-		return []string{CompletedEvent(scope)}, nil
+		return []Event{CompletedEvent(scope)}, nil
 	}
 
-	return scope, []Transition{dynamicTransition{source: StartCommand(scope), destinationFunc: destinationFunc}}, nil
+	return scope, []Transition{NewDynamicTransition(StartCommand(scope), destinationFunc)}, nil
 }

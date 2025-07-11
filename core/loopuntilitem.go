@@ -24,22 +24,22 @@ func (lui *loopUntilItem) Transitions(parent Scope) (Scope, []Transition, error)
 		return nil, nil, err
 	}
 
-	destinationFunc := func(ctx context.Context) ([]string, error) {
+	destinationFunc := func(ctx context.Context) ([]Event, error) {
 		completed, err := lui.conditionFunc(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		if completed {
-			return []string{CompletedEvent(scope)}, nil
+			return []Event{CompletedEvent(scope)}, nil
 		}
 
-		return []string{StartCommand(itemScope)}, nil
+		return []Event{StartCommand(itemScope)}, nil
 	}
 
 	transitions := []Transition{
-		staticTransition{source: StartCommand(scope), destination: StartCommand(itemScope)},
-		dynamicTransition{source: CompletedEvent(itemScope), destinationFunc: destinationFunc},
+		NewStaticTransition(StartCommand(scope), StartCommand(itemScope)),
+		NewDynamicTransition(CompletedEvent(itemScope), destinationFunc),
 	}
 
 	transitions = append(transitions, itemTransitions...)
