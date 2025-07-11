@@ -183,7 +183,3 @@ func (t dynamicTransition) Destination(ctx context.Context) ([]string, error) {
 func (t dynamicTransition) IsExclusive() bool {
 	return true
 }
-
-func NamespacedName(namespace string, name string) string {
-	return fmt.Sprintf("%s/%s", namespace, name)
-}

@@ -38,22 +38,22 @@ func (s stepSpecImpl) Do(name string, activityFunc func(ctx context.Context) err
 
 // WaitFor implements StepSpec interface
 func (s stepSpecImpl) WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) StepSpec {
-	return append(s, core.NewWaitForItem(core.NamespacedName("waitFor", name), conditionFunc))
+	return append(s, core.NewWaitForItem("waitFor"+name, conditionFunc))
 }
 
 // Retry implements StepSpec interface
 func (s stepSpecImpl) Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewRetryItem(core.NewStepsItem(core.NamespacedName("retry", name), stepSpec), errHandlerFunc))
+	return append(s, core.NewRetryItem(core.NewStepsItem("retry"+name, stepSpec), errHandlerFunc))
 }
 
 // LoopUntil implements StepSpec interface
 func (s stepSpecImpl) LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewLoopUntilItem(core.NewStepsItem(core.NamespacedName("loopUntil", name), stepSpec), conditionFunc))
+	return append(s, core.NewLoopUntilItem("loopUntil"+name, core.NewStepsItem("steps", stepSpec), conditionFunc))
 }
 
 // Case implements StepSpec interface
 func (s stepSpecImpl) Case(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewCaseItem(core.NewStepsItem(core.NamespacedName("case", name), stepSpec), conditionFunc))
+	return append(s, core.NewCaseItem("case"+name, core.NewStepsItem("steps", stepSpec), conditionFunc))
 }
 
 func Steps() StepSpec {

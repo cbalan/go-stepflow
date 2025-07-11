@@ -8,15 +8,16 @@ type caseItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func NewCaseItem(item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
+func NewCaseItem(name string, item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return &caseItem{
+		name:          name,
 		item:          item,
 		conditionFunc: conditionFunc,
 	}
 }
 
 func (ci *caseItem) Name() string {
-	return ci.item.Name()
+	return ci.name
 }
 
 func (ci *caseItem) Transitions(parent Scope) (Scope, []Transition, error) {
