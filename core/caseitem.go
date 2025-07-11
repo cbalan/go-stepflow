@@ -16,42 +16,36 @@ func NewCaseItem(item StepFlowItem, conditionFunc func(ctx context.Context) (boo
 }
 
 func (ci *caseItem) Name() string {
-	return ci.name
+	return ci.item.Name()
 }
 
-func (ci *caseItem) WithName(name string) StepFlowItem {
-	return &caseItem{
-		name:          name,
-		item:          ci.item.WithName(NamespacedName(name, "case")),
-		conditionFunc: ci.conditionFunc,
-	}
-}
+func (ci *caseItem) Transitions(parent Scope) (Scope, []Transition, error) {
+	scope := NewItemScope(ci, parent)
 
-func (ci *caseItem) Transitions() ([]Transition, error) {
-	transitions := []Transition{
-		dynamicTransition{source: StartCommand(ci), destinationFunc: ci.apply},
-		staticTransition{source: CompletedEvent(ci.item), destination: CompletedEvent(ci)},
-	}
-
-	itemTransitions, err := ci.item.Transitions()
+	itemScope, itemTransitions, err := ci.item.Transitions(scope)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	destinationFunc := func(ctx context.Context) ([]string, error) {
+		shouldStart, err := ci.conditionFunc(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if shouldStart {
+			return []string{StartCommand(itemScope)}, nil
+		}
+
+		return []string{CompletedEvent(scope)}, nil
+	}
+
+	transitions := []Transition{
+		dynamicTransition{source: StartCommand(scope), destinationFunc: destinationFunc},
+		staticTransition{source: CompletedEvent(itemScope), destination: CompletedEvent(scope)},
 	}
 
 	transitions = append(transitions, itemTransitions...)
 
-	return transitions, nil
-}
-
-func (ci *caseItem) apply(ctx context.Context) ([]string, error) {
-	shouldStart, err := ci.conditionFunc(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if shouldStart {
-		return []string{StartCommand(ci.item)}, nil
-	}
-
-	return []string{CompletedEvent(ci)}, nil
+	return scope, transitions, nil
 }

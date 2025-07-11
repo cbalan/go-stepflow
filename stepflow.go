@@ -28,32 +28,32 @@ func (s stepSpecImpl) Items() ([]StepFlowItem, error) {
 
 // Steps implements StepSpec interface.
 func (s stepSpecImpl) Steps(name string, stepSpec StepSpec) StepSpec {
-	return append(s, core.NewStepsItem(stepSpec).WithName(name))
+	return append(s, core.NewStepsItem(name, stepSpec))
 }
 
 // Do implements StepSpec interface
 func (s stepSpecImpl) Do(name string, activityFunc func(ctx context.Context) error) StepSpec {
-	return append(s, core.NewFuncItem(activityFunc).WithName(name))
+	return append(s, core.NewFuncItem(name, activityFunc))
 }
 
 // WaitFor implements StepSpec interface
 func (s stepSpecImpl) WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) StepSpec {
-	return append(s, core.NewWaitForItem(conditionFunc).WithName(core.NamespacedName("waitFor", name)))
+	return append(s, core.NewWaitForItem(core.NamespacedName("waitFor", name), conditionFunc))
 }
 
 // Retry implements StepSpec interface
 func (s stepSpecImpl) Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewRetryItem(core.NewStepsItem(stepSpec), errHandlerFunc).WithName(core.NamespacedName("retry", name)))
+	return append(s, core.NewRetryItem(core.NewStepsItem(core.NamespacedName("retry", name), stepSpec), errHandlerFunc))
 }
 
 // LoopUntil implements StepSpec interface
 func (s stepSpecImpl) LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewLoopUntilItem(core.NewStepsItem(stepSpec), conditionFunc).WithName(core.NamespacedName("loopUntil", name)))
+	return append(s, core.NewLoopUntilItem(core.NewStepsItem(core.NamespacedName("loopUntil", name), stepSpec), conditionFunc))
 }
 
 // Case implements StepSpec interface
 func (s stepSpecImpl) Case(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewCaseItem(core.NewStepsItem(stepSpec), conditionFunc).WithName(core.NamespacedName("case", name)))
+	return append(s, core.NewCaseItem(core.NewStepsItem(core.NamespacedName("case", name), stepSpec), conditionFunc))
 }
 
 func Steps() StepSpec {
@@ -61,5 +61,5 @@ func Steps() StepSpec {
 }
 
 func NewStepFlow(name string, stepSpec StepSpec) (StepFlow, error) {
-	return core.NewStepFlow(core.NewStepsItem(stepSpec).WithName(name))
+	return core.NewStepFlow(core.NewStepsItem(name, stepSpec))
 }

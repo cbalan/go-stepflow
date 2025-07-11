@@ -47,17 +47,10 @@ func (ri *retryItem) Name() string {
 	return ri.item.Name()
 }
 
-func (ri *retryItem) WithName(name string) StepFlowItem {
-	return &retryItem{
-		item:             ri.item.WithName(name),
-		errorHandlerFunc: ri.errorHandlerFunc,
-	}
-}
-
-func (ri *retryItem) Transitions() ([]Transition, error) {
-	itemTransitions, err := ri.item.Transitions()
+func (ri *retryItem) Transitions(parent Scope) (Scope, []Transition, error) {
+	itemScope, itemTransitions, err := ri.item.Transitions(parent)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var transitions []Transition
@@ -65,9 +58,9 @@ func (ri *retryItem) Transitions() ([]Transition, error) {
 		transitions = append(transitions, retriableTransition{
 			transition:       transition,
 			errorHandlerFunc: ri.errorHandlerFunc,
-			retryEvent:       StartCommand(ri.item),
+			retryEvent:       StartCommand(itemScope),
 		})
 	}
 
-	return transitions, nil
+	return itemScope, transitions, nil
 }

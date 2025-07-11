@@ -7,26 +7,24 @@ type funcItem struct {
 	activityFunc func(context.Context) error
 }
 
-func NewFuncItem(activityFunc func(context.Context) error) StepFlowItem {
-	return &funcItem{activityFunc: activityFunc}
+func NewFuncItem(name string, activityFunc func(context.Context) error) StepFlowItem {
+	return &funcItem{name: name, activityFunc: activityFunc}
 }
 
 func (fi *funcItem) Name() string {
 	return fi.name
 }
 
-func (fi *funcItem) WithName(name string) StepFlowItem {
-	return &funcItem{name: name, activityFunc: fi.activityFunc}
-}
+func (fi *funcItem) Transitions(parent Scope) (Scope, []Transition, error) {
+	scope := NewItemScope(fi, parent)
 
-func (fi *funcItem) Transitions() ([]Transition, error) {
-	return []Transition{dynamicTransition{source: StartCommand(fi), destinationFunc: fi.apply}}, nil
-}
+	destinationFunc := func(ctx context.Context) ([]string, error) {
+		if err := fi.activityFunc(ctx); err != nil {
+			return nil, err
+		}
 
-func (fi *funcItem) apply(ctx context.Context) ([]string, error) {
-	if err := fi.activityFunc(ctx); err != nil {
-		return nil, err
+		return []string{CompletedEvent(scope)}, nil
 	}
 
-	return []string{CompletedEvent(fi)}, nil
+	return scope, []Transition{dynamicTransition{source: StartCommand(scope), destinationFunc: destinationFunc}}, nil
 }

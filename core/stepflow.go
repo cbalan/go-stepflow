@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 type StepFlow interface {
@@ -10,22 +11,41 @@ type StepFlow interface {
 	IsCompleted(state []string) bool
 }
 
+type Scope interface {
+	Parent() Scope
+	Name() string
+}
+
+type scopeImpl struct {
+	name   string
+	parent Scope
+}
+
+func NewItemScope(item StepFlowItem, parent Scope) Scope {
+	return &scopeImpl{parent: parent, name: item.Name()}
+}
+
+func (s *scopeImpl) Name() string {
+	return s.name
+}
+
+func (s *scopeImpl) Parent() Scope {
+	return s.parent
+}
+
 type StepFlowItem interface {
 	Name() string
-
-	// WithName returns a new StepFlowItem instance with the provided name.
-	WithName(string) StepFlowItem
-
-	Transitions() ([]Transition, error)
+	Transitions(parent Scope) (Scope, []Transition, error)
 }
 
 type stepFlow struct {
 	item           StepFlowItem
+	scope          Scope
 	transitionsMap map[string][]Transition
 }
 
 func NewStepFlow(item StepFlowItem) (StepFlow, error) {
-	transitions, err := item.Transitions()
+	itemScope, transitions, err := item.Transitions(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -35,13 +55,13 @@ func NewStepFlow(item StepFlowItem) (StepFlow, error) {
 		transitionsMap[t.Source()] = append(transitionsMap[t.Source()], t)
 	}
 
-	return &stepFlow{item: item, transitionsMap: transitionsMap}, nil
+	return &stepFlow{item: item, scope: itemScope, transitionsMap: transitionsMap}, nil
 }
 
 const ApplyOneMaxIterations = 100
 
 func (sf *stepFlow) Apply(ctx context.Context, oldState []string) ([]string, error) {
-	newState := withDefaultValue(oldState, []string{StartCommand(sf.item)})
+	newState := withDefaultValue(oldState, []string{StartCommand(sf.scope)})
 	var isExclusive bool
 	var err error
 
@@ -84,19 +104,44 @@ func (sf *stepFlow) IsCompleted(state []string) bool {
 		return false
 	}
 
-	return state[0] == CompletedEvent(sf.item)
+	return state[0] == CompletedEvent(sf.scope)
 }
 
-func eventString(item StepFlowItem, event string) string {
-	return fmt.Sprintf("%s:%s", event, item.Name())
+func eventString(event string, scope Scope) string {
+	var sb strings.Builder
+
+	sb.WriteString(event)
+	sb.WriteString(":")
+
+	names := scopeNames(scope)
+	if len(names) > 0 {
+		sb.WriteString(names[len(names)-1])
+		if len(names) > 1 {
+			for i := len(names) - 2; i >= 0; i-- {
+				sb.WriteString("/")
+				sb.WriteString(names[i])
+			}
+		}
+	}
+
+	return sb.String()
 }
 
-func StartCommand(item StepFlowItem) string {
-	return eventString(item, "start")
+func scopeNames(scope Scope) []string {
+	var names []string
+	for scope != nil {
+		names = append(names, scope.Name())
+		scope = scope.Parent()
+	}
+	return names
 }
 
-func CompletedEvent(item StepFlowItem) string {
-	return eventString(item, "completed")
+func StartCommand(scope Scope) string {
+	return eventString("start", scope)
+}
+
+func CompletedEvent(scope Scope) string {
+	return eventString("completed", scope)
 }
 
 type Transition interface {

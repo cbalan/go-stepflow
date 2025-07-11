@@ -11,49 +11,46 @@ type stepsItem struct {
 	itemsProvider ItemsProvider
 }
 
-func NewStepsItem(itemsProvider ItemsProvider) StepFlowItem {
-	return &stepsItem{itemsProvider: itemsProvider}
+func NewStepsItem(name string, itemsProvider ItemsProvider) StepFlowItem {
+	return &stepsItem{name: name, itemsProvider: itemsProvider}
 }
 
 func (si *stepsItem) Name() string {
 	return si.name
 }
 
-func (si *stepsItem) WithName(name string) StepFlowItem {
-	return &stepsItem{name: name, itemsProvider: si.itemsProvider}
-}
+func (si *stepsItem) Transitions(parent Scope) (Scope, []Transition, error) {
+	scope := NewItemScope(si, parent)
 
-func (si *stepsItem) Transitions() ([]Transition, error) {
 	items, err := si.itemsProvider.Items()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	seenNames := make(map[string]bool)
 
-	lastEvent := StartCommand(si)
+	lastEvent := StartCommand(scope)
 
 	var transitions []Transition
 	for _, item := range items {
-		nsItem := item.WithName(NamespacedName(si.Name(), item.Name()))
-
-		if seenNames[nsItem.Name()] {
-			return nil, fmt.Errorf("name %s must be unique in the current context", nsItem.Name())
-		}
-		seenNames[nsItem.Name()] = true
-
-		transitions = append(transitions, staticTransition{source: lastEvent, destination: StartCommand(nsItem)})
-
-		itemTransitions, err := nsItem.Transitions()
+		itemScope, itemTransitions, err := item.Transitions(scope)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+
+		if seenNames[item.Name()] {
+			return nil, nil, fmt.Errorf("name %s must be unique in the current context", item.Name())
+		}
+		seenNames[item.Name()] = true
+
+		transitions = append(transitions, staticTransition{source: lastEvent, destination: StartCommand(itemScope)})
+
 		transitions = append(transitions, itemTransitions...)
 
-		lastEvent = CompletedEvent(nsItem)
+		lastEvent = CompletedEvent(itemScope)
 	}
 
-	transitions = append(transitions, staticTransition{source: lastEvent, destination: CompletedEvent(si)})
+	transitions = append(transitions, staticTransition{source: lastEvent, destination: CompletedEvent(scope)})
 
-	return transitions, nil
+	return scope, transitions, nil
 }

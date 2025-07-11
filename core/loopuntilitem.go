@@ -16,39 +16,33 @@ func (lui *loopUntilItem) Name() string {
 	return lui.name
 }
 
-func (lui *loopUntilItem) WithName(name string) StepFlowItem {
-	return &loopUntilItem{
-		name:          name,
-		item:          lui.item.WithName(NamespacedName(name, "loop")),
-		conditionFunc: lui.conditionFunc,
-	}
-}
+func (lui *loopUntilItem) Transitions(parent Scope) (Scope, []Transition, error) {
+	scope := NewItemScope(lui, parent)
 
-func (lui *loopUntilItem) Transitions() ([]Transition, error) {
+	itemScope, itemTransitions, err := lui.item.Transitions(scope)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	destinationFunc := func(ctx context.Context) ([]string, error) {
+		completed, err := lui.conditionFunc(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if completed {
+			return []string{CompletedEvent(scope)}, nil
+		}
+
+		return []string{StartCommand(itemScope)}, nil
+	}
+
 	transitions := []Transition{
-		staticTransition{source: StartCommand(lui), destination: StartCommand(lui.item)},
-		dynamicTransition{source: CompletedEvent(lui.item), destinationFunc: lui.apply},
+		staticTransition{source: StartCommand(scope), destination: StartCommand(itemScope)},
+		dynamicTransition{source: CompletedEvent(itemScope), destinationFunc: destinationFunc},
 	}
 
-	loopStepsTransitions, err := lui.item.Transitions()
-	if err != nil {
-		return nil, err
-	}
+	transitions = append(transitions, itemTransitions...)
 
-	transitions = append(transitions, loopStepsTransitions...)
-
-	return transitions, nil
-}
-
-func (lui *loopUntilItem) apply(ctx context.Context) ([]string, error) {
-	completed, err := lui.conditionFunc(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if completed {
-		return []string{CompletedEvent(lui)}, nil
-	}
-
-	return []string{StartCommand(lui.item)}, nil
+	return scope, transitions, nil
 }
