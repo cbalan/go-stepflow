@@ -11,7 +11,7 @@ type StepFlow interface {
 }
 
 type Scope interface {
-	String() string
+	Name() string
 }
 
 type scopeImpl string
@@ -21,10 +21,10 @@ func NewItemScope(item StepFlowItem, parent Scope) Scope {
 		return scopeImpl(item.Name())
 	}
 
-	return scopeImpl(parent.String() + "/" + item.Name())
+	return scopeImpl(parent.Name() + "/" + item.Name())
 }
 
-func (s scopeImpl) String() string {
+func (s scopeImpl) Name() string {
 	return string(s)
 }
 
@@ -126,7 +126,7 @@ func (e eventImpl) Scope() Scope {
 }
 
 func eventString(event Event) string {
-	return event.Name() + ":" + event.Scope().String()
+	return event.Name() + ":" + event.Scope().Name()
 }
 
 func eventsString(events []Event) []string {
