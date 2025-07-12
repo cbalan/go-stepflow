@@ -37,7 +37,7 @@ type stepFlow struct {
 	item           StepFlowItem
 	transitionsMap map[string][]Transition
 	startState     []string
-	completeState  []string
+	completedState []string
 }
 
 func NewStepFlow(item StepFlowItem) (StepFlow, error) {
@@ -53,9 +53,9 @@ func NewStepFlow(item StepFlowItem) (StepFlow, error) {
 	}
 
 	startState := []string{eventString(StartCommand(itemScope))}
-	completeState := []string{eventString(CompletedEvent(itemScope))}
+	completedState := []string{eventString(CompletedEvent(itemScope))}
 
-	return &stepFlow{item: item, transitionsMap: transitionsMap, startState: startState, completeState: completeState}, nil
+	return &stepFlow{item: item, transitionsMap: transitionsMap, startState: startState, completedState: completedState}, nil
 }
 
 const ApplyOneMaxIterations = 100
@@ -104,7 +104,7 @@ func (sf *stepFlow) IsCompleted(state []string) bool {
 		return false
 	}
 
-	return state[0] == sf.completeState[0]
+	return state[0] == sf.completedState[0]
 }
 
 type Event interface {
