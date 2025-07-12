@@ -9,8 +9,7 @@ type StepFlow = core.StepFlow
 type StepFlowItem = core.StepFlowItem
 
 type StepSpec interface {
-	core.ItemsProvider
-
+	Items() ([]StepFlowItem, error)
 	Steps(name string, stepSpec StepSpec) StepSpec
 	Do(name string, activityFunc func(ctx context.Context) error) StepSpec
 	WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) StepSpec
