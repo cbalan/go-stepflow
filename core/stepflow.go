@@ -10,38 +10,54 @@ type StepFlow interface {
 	IsCompleted(state []string) bool
 }
 
+type Scope interface {
+	Name() string
+}
+
+type scopeImpl string
+
+func NewItemScope(item StepFlowItem, parent Scope) Scope {
+	if parent == nil {
+		return scopeImpl(item.Name())
+	}
+
+	return scopeImpl(parent.Name() + "/" + item.Name())
+}
+
+func (s scopeImpl) Name() string {
+	return string(s)
+}
+
 type StepFlowItem interface {
 	Name() string
-
-	// WithName returns a new StepFlowItem instance with the provided name.
-	WithName(string) StepFlowItem
-
-	Transitions() ([]Transition, error)
+	Transitions(parent Scope) (Scope, []Transition, error)
 }
 
 type stepFlow struct {
 	item           StepFlowItem
+	scope          Scope
 	transitionsMap map[string][]Transition
 }
 
 func NewStepFlow(item StepFlowItem) (StepFlow, error) {
-	transitions, err := item.Transitions()
+	itemScope, transitions, err := item.Transitions(nil)
 	if err != nil {
 		return nil, err
 	}
 
 	transitionsMap := make(map[string][]Transition)
 	for _, t := range transitions {
-		transitionsMap[t.Source()] = append(transitionsMap[t.Source()], t)
+		source := eventString(t.Source())
+		transitionsMap[source] = append(transitionsMap[source], t)
 	}
 
-	return &stepFlow{item: item, transitionsMap: transitionsMap}, nil
+	return &stepFlow{item: item, scope: itemScope, transitionsMap: transitionsMap}, nil
 }
 
 const ApplyOneMaxIterations = 100
 
 func (sf *stepFlow) Apply(ctx context.Context, oldState []string) ([]string, error) {
-	newState := withDefaultValue(oldState, []string{StartCommand(sf.item)})
+	newState := withDefaultValue(oldState, []string{eventString(StartCommand(sf.scope))})
 	var isExclusive bool
 	var err error
 
@@ -64,7 +80,7 @@ func (sf *stepFlow) applyOne(ctx context.Context, oldState []string) ([]string, 
 		for _, t := range sf.transitionsMap[lastEvent] {
 			isExclusive := t.IsExclusive()
 			newState, err := t.Destination(ctx)
-			return newState, isExclusive, err
+			return eventsString(newState), isExclusive, err
 		}
 	}
 
@@ -84,38 +100,73 @@ func (sf *stepFlow) IsCompleted(state []string) bool {
 		return false
 	}
 
-	return state[0] == CompletedEvent(sf.item)
+	return state[0] == eventString(CompletedEvent(sf.scope))
 }
 
-func eventString(item StepFlowItem, event string) string {
-	return fmt.Sprintf("%s:%s", event, item.Name())
+type Event interface {
+	Name() string
+	Scope() Scope
 }
 
-func StartCommand(item StepFlowItem) string {
-	return eventString(item, "start")
+type eventImpl struct {
+	name  string
+	scope Scope
 }
 
-func CompletedEvent(item StepFlowItem) string {
-	return eventString(item, "completed")
+func NewEvent(name string, scope Scope) Event {
+	return &eventImpl{name: name, scope: scope}
+}
+
+func (e eventImpl) Name() string {
+	return e.name
+}
+
+func (e eventImpl) Scope() Scope {
+	return e.scope
+}
+
+func eventString(event Event) string {
+	return event.Name() + ":" + event.Scope().Name()
+}
+
+func eventsString(events []Event) []string {
+	var result []string
+	for _, event := range events {
+		result = append(result, eventString(event))
+	}
+
+	return result
+}
+
+func StartCommand(scope Scope) Event {
+	return NewEvent("start", scope)
+}
+
+func CompletedEvent(scope Scope) Event {
+	return NewEvent("completed", scope)
 }
 
 type Transition interface {
-	Source() string
-	Destination(context.Context) ([]string, error)
+	Source() Event
+	Destination(context.Context) ([]Event, error)
 	IsExclusive() bool
 }
 
 type staticTransition struct {
-	source      string
-	destination string
+	source      Event
+	destination []Event
 }
 
-func (t staticTransition) Source() string {
+func NewStaticTransition(source Event, destination ...Event) Transition {
+	return staticTransition{source: source, destination: destination}
+}
+
+func (t staticTransition) Source() Event {
 	return t.source
 }
 
-func (t staticTransition) Destination(_ context.Context) ([]string, error) {
-	return []string{t.destination}, nil
+func (t staticTransition) Destination(_ context.Context) ([]Event, error) {
+	return t.destination, nil
 }
 
 func (t staticTransition) IsExclusive() bool {
@@ -123,22 +174,22 @@ func (t staticTransition) IsExclusive() bool {
 }
 
 type dynamicTransition struct {
-	source          string
-	destinationFunc func(context.Context) ([]string, error)
+	source          Event
+	destinationFunc func(context.Context) ([]Event, error)
 }
 
-func (t dynamicTransition) Source() string {
+func NewDynamicTransition(source Event, destinationFunc func(context.Context) ([]Event, error)) Transition {
+	return dynamicTransition{source: source, destinationFunc: destinationFunc}
+}
+
+func (t dynamicTransition) Source() Event {
 	return t.source
 }
 
-func (t dynamicTransition) Destination(ctx context.Context) ([]string, error) {
+func (t dynamicTransition) Destination(ctx context.Context) ([]Event, error) {
 	return t.destinationFunc(ctx)
 }
 
 func (t dynamicTransition) IsExclusive() bool {
 	return true
-}
-
-func NamespacedName(namespace string, name string) string {
-	return fmt.Sprintf("%s/%s", namespace, name)
 }

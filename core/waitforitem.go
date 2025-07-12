@@ -7,38 +7,31 @@ type waitForItem struct {
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
-func NewWaitForItem(conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
-	return &waitForItem{conditionFunc: conditionFunc}
+func NewWaitForItem(name string, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
+	return &waitForItem{name: name, conditionFunc: conditionFunc}
 }
 
 func (wfi *waitForItem) Name() string {
 	return wfi.name
 }
 
-func (wfi *waitForItem) WithName(name string) StepFlowItem {
-	return &waitForItem{
-		name:          name,
-		conditionFunc: wfi.conditionFunc,
-	}
-}
+func (wfi *waitForItem) Transitions(parent Scope) (Scope, []Transition, error) {
+	scope := NewItemScope(wfi, parent)
 
-func (wfi *waitForItem) Transitions() ([]Transition, error) {
-	transitions := []Transition{
-		dynamicTransition{source: StartCommand(wfi), destinationFunc: wfi.apply},
-	}
+	destinationFunc := func(ctx context.Context) ([]Event, error) {
+		completed, err := wfi.conditionFunc(ctx)
+		if err != nil {
+			return nil, err
+		}
 
-	return transitions, nil
-}
+		if completed {
+			return []Event{CompletedEvent(scope)}, nil
+		}
 
-func (wfi *waitForItem) apply(ctx context.Context) ([]string, error) {
-	completed, err := wfi.conditionFunc(ctx)
-	if err != nil {
-		return nil, err
+		return []Event{StartCommand(scope)}, nil
 	}
 
-	if completed {
-		return []string{CompletedEvent(wfi)}, nil
-	}
+	transitions := []Transition{NewDynamicTransition(StartCommand(scope), destinationFunc)}
 
-	return []string{StartCommand(wfi)}, nil
+	return scope, transitions, nil
 }
