@@ -35,8 +35,9 @@ type StepFlowItem interface {
 
 type stepFlow struct {
 	item           StepFlowItem
-	scope          Scope
 	transitionsMap map[string][]Transition
+	startState     []string
+	completeState  []string
 }
 
 func NewStepFlow(item StepFlowItem) (StepFlow, error) {
@@ -51,13 +52,16 @@ func NewStepFlow(item StepFlowItem) (StepFlow, error) {
 		transitionsMap[source] = append(transitionsMap[source], t)
 	}
 
-	return &stepFlow{item: item, scope: itemScope, transitionsMap: transitionsMap}, nil
+	startState := []string{eventString(StartCommand(itemScope))}
+	completeState := []string{eventString(CompletedEvent(itemScope))}
+
+	return &stepFlow{item: item, transitionsMap: transitionsMap, startState: startState, completeState: completeState}, nil
 }
 
 const ApplyOneMaxIterations = 100
 
 func (sf *stepFlow) Apply(ctx context.Context, oldState []string) ([]string, error) {
-	newState := withDefaultValue(oldState, []string{eventString(StartCommand(sf.scope))})
+	newState := withDefaultValue(oldState, sf.startState)
 	var isExclusive bool
 	var err error
 
@@ -100,7 +104,7 @@ func (sf *stepFlow) IsCompleted(state []string) bool {
 		return false
 	}
 
-	return state[0] == eventString(CompletedEvent(sf.scope))
+	return state[0] == sf.completeState[0]
 }
 
 type Event interface {
