@@ -3,25 +3,21 @@ package core
 import "context"
 
 type caseItem struct {
-	name          string
+	scope         Scope
 	item          StepFlowItem
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
 func NewCaseItem(name string, item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
 	return &caseItem{
-		name:          name,
+		scope:         NewScope(name),
 		item:          item,
 		conditionFunc: conditionFunc,
 	}
 }
 
-func (ci *caseItem) Name() string {
-	return ci.name
-}
-
 func (ci *caseItem) Transitions(parent Scope) (Scope, []Transition, error) {
-	scope := NewItemScope(ci, parent)
+	scope := WithParent(ci.scope, parent)
 
 	itemScope, itemTransitions, err := ci.item.Transitions(scope)
 	if err != nil {

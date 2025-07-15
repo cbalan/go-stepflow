@@ -43,10 +43,6 @@ func NewRetryItem(item StepFlowItem, errorHandlerFunc func(ctx context.Context, 
 	return &retryItem{item: item, errorHandlerFunc: errorHandlerFunc}
 }
 
-func (ri *retryItem) Name() string {
-	return ri.item.Name()
-}
-
 func (ri *retryItem) Transitions(parent Scope) (Scope, []Transition, error) {
 	itemScope, itemTransitions, err := ri.item.Transitions(parent)
 	if err != nil {

@@ -3,20 +3,16 @@ package core
 import "context"
 
 type waitForItem struct {
-	name          string
+	scope         Scope
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
 func NewWaitForItem(name string, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
-	return &waitForItem{name: name, conditionFunc: conditionFunc}
-}
-
-func (wfi *waitForItem) Name() string {
-	return wfi.name
+	return &waitForItem{scope: NewScope(name), conditionFunc: conditionFunc}
 }
 
 func (wfi *waitForItem) Transitions(parent Scope) (Scope, []Transition, error) {
-	scope := NewItemScope(wfi, parent)
+	scope := WithParent(wfi.scope, parent)
 
 	destinationFunc := func(ctx context.Context) ([]Event, error) {
 		completed, err := wfi.conditionFunc(ctx)
