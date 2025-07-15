@@ -11,12 +11,16 @@ type Scope interface {
 
 type scopeImpl string
 
-func NewItemScope(item StepFlowItem, parent Scope) Scope {
+func NewScope(name string) Scope {
+	return scopeImpl(name)
+}
+
+func WithParent(scope Scope, parent Scope) Scope {
 	if parent == nil {
-		return scopeImpl(item.Name())
+		return scope
 	}
 
-	return scopeImpl(parent.Name() + "/" + item.Name())
+	return scopeImpl(parent.Name() + "/" + scope.Name())
 }
 
 func (s scopeImpl) Name() string {
@@ -24,7 +28,6 @@ func (s scopeImpl) Name() string {
 }
 
 type StepFlowItem interface {
-	Name() string
 	Transitions(parent Scope) (Scope, []Transition, error)
 }
 

@@ -3,21 +3,17 @@ package core
 import "context"
 
 type loopUntilItem struct {
-	name          string
+	scope         Scope
 	item          StepFlowItem
 	conditionFunc func(ctx context.Context) (bool, error)
 }
 
 func NewLoopUntilItem(name string, item StepFlowItem, conditionFunc func(ctx context.Context) (bool, error)) StepFlowItem {
-	return &loopUntilItem{name: name, item: item, conditionFunc: conditionFunc}
-}
-
-func (lui *loopUntilItem) Name() string {
-	return lui.name
+	return &loopUntilItem{scope: NewScope(name), item: item, conditionFunc: conditionFunc}
 }
 
 func (lui *loopUntilItem) Transitions(parent Scope) (Scope, []Transition, error) {
-	scope := NewItemScope(lui, parent)
+	scope := WithParent(lui.scope, parent)
 
 	itemScope, itemTransitions, err := lui.item.Transitions(scope)
 	if err != nil {
