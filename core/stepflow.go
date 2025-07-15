@@ -5,11 +5,6 @@ import (
 	"fmt"
 )
 
-type StepFlow interface {
-	Apply(ctx context.Context, state []string) ([]string, error)
-	IsCompleted(state []string) bool
-}
-
 type Scope interface {
 	Name() string
 }
@@ -33,14 +28,14 @@ type StepFlowItem interface {
 	Transitions(parent Scope) (Scope, []Transition, error)
 }
 
-type stepFlow struct {
+type StepFlow struct {
 	item           StepFlowItem
 	transitionsMap map[string][]Transition
 	startState     []string
 	completedState []string
 }
 
-func NewStepFlow(item StepFlowItem) (StepFlow, error) {
+func NewStepFlow(item StepFlowItem) (*StepFlow, error) {
 	itemScope, transitions, err := item.Transitions(nil)
 	if err != nil {
 		return nil, err
@@ -55,12 +50,12 @@ func NewStepFlow(item StepFlowItem) (StepFlow, error) {
 	startState := []string{eventString(StartCommand(itemScope))}
 	completedState := []string{eventString(CompletedEvent(itemScope))}
 
-	return &stepFlow{item: item, transitionsMap: transitionsMap, startState: startState, completedState: completedState}, nil
+	return &StepFlow{item: item, transitionsMap: transitionsMap, startState: startState, completedState: completedState}, nil
 }
 
 const ApplyOneMaxIterations = 100
 
-func (sf *stepFlow) Apply(ctx context.Context, oldState []string) ([]string, error) {
+func (sf *StepFlow) Apply(ctx context.Context, oldState []string) ([]string, error) {
 	newState := withDefaultValue(oldState, sf.startState)
 	var isExclusive bool
 	var err error
@@ -75,7 +70,7 @@ func (sf *stepFlow) Apply(ctx context.Context, oldState []string) ([]string, err
 	return newState, err
 }
 
-func (sf *stepFlow) applyOne(ctx context.Context, oldState []string) ([]string, bool, error) {
+func (sf *StepFlow) applyOne(ctx context.Context, oldState []string) ([]string, bool, error) {
 	if sf.IsCompleted(oldState) {
 		return oldState, true, nil
 	}
@@ -99,7 +94,7 @@ func withDefaultValue(value []string, defaultValue []string) []string {
 	return value
 }
 
-func (sf *stepFlow) IsCompleted(state []string) bool {
+func (sf *StepFlow) IsCompleted(state []string) bool {
 	if len(state) != 1 {
 		return false
 	}

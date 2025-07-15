@@ -2,17 +2,13 @@ package core
 
 import "fmt"
 
-type ItemsProvider interface {
-	Items() ([]StepFlowItem, error)
-}
-
 type stepsItem struct {
-	name          string
-	itemsProvider ItemsProvider
+	name  string
+	items []StepFlowItem
 }
 
-func NewStepsItem(name string, itemsProvider ItemsProvider) StepFlowItem {
-	return &stepsItem{name: name, itemsProvider: itemsProvider}
+func NewStepsItem(name string, items []StepFlowItem) StepFlowItem {
+	return &stepsItem{name: name, items: items}
 }
 
 func (si *stepsItem) Name() string {
@@ -22,17 +18,13 @@ func (si *stepsItem) Name() string {
 func (si *stepsItem) Transitions(parent Scope) (Scope, []Transition, error) {
 	scope := NewItemScope(si, parent)
 
-	items, err := si.itemsProvider.Items()
-	if err != nil {
-		return nil, nil, err
-	}
-
 	seenNames := make(map[string]bool)
 
 	lastEvent := StartCommand(scope)
 
 	var transitions []Transition
-	for _, item := range items {
+
+	for _, item := range si.items {
 		itemScope, itemTransitions, err := item.Transitions(scope)
 		if err != nil {
 			return nil, nil, err
