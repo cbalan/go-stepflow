@@ -5,58 +5,49 @@ import (
 	"github.com/cbalan/go-stepflow/core"
 )
 
-type StepFlow = core.StepFlow
-
-type StepSpec interface {
-	Steps(name string, stepSpec StepSpec) StepSpec
-	Do(name string, activityFunc func(ctx context.Context) error) StepSpec
-	WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) StepSpec
-	Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), stepSpec StepSpec) StepSpec
-	LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec
-	Case(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec
+type StepsSpec struct {
+	items []core.StepFlowItem
 }
 
-type stepSpecImpl []core.StepFlowItem
-
-// Items implements core.ItemsProvider interface.
-func (s stepSpecImpl) Items() ([]core.StepFlowItem, error) {
-	return s, nil
+func (s *StepsSpec) Steps(name string, stepsSpec *StepsSpec) *StepsSpec {
+	s.items = append(s.items, core.NewStepsItem(name, stepsSpec.items))
+	return s
 }
 
-// Steps implements StepSpec interface.
-func (s stepSpecImpl) Steps(name string, stepSpec StepSpec) StepSpec {
-	return append(s, core.NewStepsItem(name, stepSpec.(core.ItemsProvider)))
+func (s *StepsSpec) Do(name string, activityFunc func(ctx context.Context) error) *StepsSpec {
+	s.items = append(s.items, core.NewFuncItem(name, activityFunc))
+	return s
 }
 
-// Do implements StepSpec interface
-func (s stepSpecImpl) Do(name string, activityFunc func(ctx context.Context) error) StepSpec {
-	return append(s, core.NewFuncItem(name, activityFunc))
+func (s *StepsSpec) WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) *StepsSpec {
+	s.items = append(s.items, core.NewWaitForItem(name+"WaitFor", conditionFunc))
+	return s
 }
 
-// WaitFor implements StepSpec interface
-func (s stepSpecImpl) WaitFor(name string, conditionFunc func(ctx context.Context) (bool, error)) StepSpec {
-	return append(s, core.NewWaitForItem(name+"WaitFor", conditionFunc))
+func (s *StepsSpec) Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), stepsSpec *StepsSpec) *StepsSpec {
+	s.items = append(s.items, core.NewRetryItem(core.NewStepsItem(name+"Retry", stepsSpec.items), errHandlerFunc))
+	return s
 }
 
-// Retry implements StepSpec interface
-func (s stepSpecImpl) Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewRetryItem(core.NewStepsItem(name+"Retry", stepSpec.(core.ItemsProvider)), errHandlerFunc))
+func (s *StepsSpec) LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), stepsSpec *StepsSpec) *StepsSpec {
+	s.items = append(s.items, core.NewLoopUntilItem(name+"LoopUntil", core.NewStepsItem("steps", stepsSpec.items), conditionFunc))
+	return s
 }
 
-// LoopUntil implements StepSpec interface
-func (s stepSpecImpl) LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewLoopUntilItem(name+"LoopUntil", core.NewStepsItem("steps", stepSpec.(core.ItemsProvider)), conditionFunc))
+func (s *StepsSpec) Case(name string, conditionFunc func(ctx context.Context) (bool, error), stepsSpec *StepsSpec) *StepsSpec {
+	s.items = append(s.items, core.NewCaseItem(name+"Case", core.NewStepsItem("steps", stepsSpec.items), conditionFunc))
+	return s
 }
 
-// Case implements StepSpec interface
-func (s stepSpecImpl) Case(name string, conditionFunc func(ctx context.Context) (bool, error), stepSpec StepSpec) StepSpec {
-	return append(s, core.NewCaseItem(name+"Case", core.NewStepsItem("steps", stepSpec.(core.ItemsProvider)), conditionFunc))
+func Steps() *StepsSpec {
+	return &StepsSpec{}
 }
 
-func Steps() StepSpec {
-	return stepSpecImpl{}
+type StepFlow interface {
+	Apply(ctx context.Context, state []string) ([]string, error)
+	IsCompleted(state []string) bool
 }
 
-func NewStepFlow(name string, stepSpec StepSpec) (StepFlow, error) {
-	return core.NewStepFlow(core.NewStepsItem(name, stepSpec.(core.ItemsProvider)))
+func NewStepFlow(name string, stepsSpec *StepsSpec) (StepFlow, error) {
+	return core.NewStepFlow(core.NewStepsItem(name, stepsSpec.items))
 }
