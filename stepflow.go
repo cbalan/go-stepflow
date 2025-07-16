@@ -43,11 +43,16 @@ func Steps() *StepsSpec {
 	return &StepsSpec{}
 }
 
+// StepFlowItems returns the core.StepFlowItem items defined via StepsSpec.
+func StepFlowItems(stepsSpec *StepsSpec) []core.StepFlowItem {
+	return stepsSpec.items
+}
+
 type StepFlow interface {
 	Apply(ctx context.Context, state []string) ([]string, error)
 	IsCompleted(state []string) bool
 }
 
 func NewStepFlow(name string, stepsSpec *StepsSpec) (StepFlow, error) {
-	return core.NewStepFlow(core.NewStepsItem(name, stepsSpec.items))
+	return core.NewStepFlow(core.NewStepsItem(name, StepFlowItems(stepsSpec)))
 }
