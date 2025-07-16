@@ -1,11 +1,7 @@
 # go-stepflow
 
-*go-stepflow* Go library provides the building blocks for managing long running external processes as follows:
- - The process is described as a list of steps. 
- - The process running state is serialized after the execution of each step.
- - One Go routine can fulfill the execution of multiple running processes(load previous state, execute next step, save new state).
-
-It was designed originally to be used in conjunction with kubebuilder/controller-runtime to build Kubernetes controllers, but it has no dependencies to Kubernetes. 
+**go-stepflow** is a Go library for building and executing durable long-running processes.
+It was designed originally to be used in conjunction with kubebuilder/controller-runtime to build Kubernetes controllers, but it has no dependencies to Kubernetes.
 
 ## Example
 A continuous deployment pipeline step with the following structure may be implemented using the code snippets below.

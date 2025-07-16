@@ -160,18 +160,18 @@ type staticTransition struct {
 }
 
 func NewStaticTransition(source Event, destination ...Event) Transition {
-	return staticTransition{source: source, destination: destination}
+	return &staticTransition{source: source, destination: destination}
 }
 
-func (t staticTransition) Source() Event {
+func (t *staticTransition) Source() Event {
 	return t.source
 }
 
-func (t staticTransition) Destination(_ context.Context) ([]Event, error) {
+func (t *staticTransition) Destination(_ context.Context) ([]Event, error) {
 	return t.destination, nil
 }
 
-func (t staticTransition) IsExclusive() bool {
+func (t *staticTransition) IsExclusive() bool {
 	return false
 }
 
@@ -181,17 +181,17 @@ type dynamicTransition struct {
 }
 
 func NewDynamicTransition(source Event, destinationFunc func(context.Context) ([]Event, error)) Transition {
-	return dynamicTransition{source: source, destinationFunc: destinationFunc}
+	return &dynamicTransition{source: source, destinationFunc: destinationFunc}
 }
 
-func (t dynamicTransition) Source() Event {
+func (t *dynamicTransition) Source() Event {
 	return t.source
 }
 
-func (t dynamicTransition) Destination(ctx context.Context) ([]Event, error) {
+func (t *dynamicTransition) Destination(ctx context.Context) ([]Event, error) {
 	return t.destinationFunc(ctx)
 }
 
-func (t dynamicTransition) IsExclusive() bool {
+func (t *dynamicTransition) IsExclusive() bool {
 	return true
 }
