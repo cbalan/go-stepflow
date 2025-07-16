@@ -9,8 +9,13 @@ type StepsSpec struct {
 	items []core.StepFlowItem
 }
 
+// StepFlowItems returns the core.StepFlowItem items defined via StepsSpec.
+func StepFlowItems(stepsSpec *StepsSpec) []core.StepFlowItem {
+	return stepsSpec.items
+}
+
 func (s *StepsSpec) Steps(name string, stepsSpec *StepsSpec) *StepsSpec {
-	s.items = append(s.items, core.NewStepsItem(name, stepsSpec.items))
+	s.items = append(s.items, core.NewStepsItem(name, StepFlowItems(stepsSpec)))
 	return s
 }
 
@@ -25,27 +30,22 @@ func (s *StepsSpec) WaitFor(name string, conditionFunc func(ctx context.Context)
 }
 
 func (s *StepsSpec) Retry(name string, errHandlerFunc func(ctx context.Context, err error) (bool, error), stepsSpec *StepsSpec) *StepsSpec {
-	s.items = append(s.items, core.NewRetryItem(core.NewStepsItem(name+"Retry", stepsSpec.items), errHandlerFunc))
+	s.items = append(s.items, core.NewRetryItem(core.NewStepsItem(name+"Retry", StepFlowItems(stepsSpec)), errHandlerFunc))
 	return s
 }
 
 func (s *StepsSpec) LoopUntil(name string, conditionFunc func(ctx context.Context) (bool, error), stepsSpec *StepsSpec) *StepsSpec {
-	s.items = append(s.items, core.NewLoopUntilItem(name+"LoopUntil", core.NewStepsItem("steps", stepsSpec.items), conditionFunc))
+	s.items = append(s.items, core.NewLoopUntilItem(name+"LoopUntil", core.NewStepsItem("steps", StepFlowItems(stepsSpec)), conditionFunc))
 	return s
 }
 
 func (s *StepsSpec) Case(name string, conditionFunc func(ctx context.Context) (bool, error), stepsSpec *StepsSpec) *StepsSpec {
-	s.items = append(s.items, core.NewCaseItem(name+"Case", core.NewStepsItem("steps", stepsSpec.items), conditionFunc))
+	s.items = append(s.items, core.NewCaseItem(name+"Case", core.NewStepsItem("steps", StepFlowItems(stepsSpec)), conditionFunc))
 	return s
 }
 
 func Steps() *StepsSpec {
 	return &StepsSpec{}
-}
-
-// StepFlowItems returns the core.StepFlowItem items defined via StepsSpec.
-func StepFlowItems(stepsSpec *StepsSpec) []core.StepFlowItem {
-	return stepsSpec.items
 }
 
 type StepFlow interface {
