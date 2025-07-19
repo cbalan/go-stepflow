@@ -27,7 +27,12 @@ func (wfi *waitForItem) Transitions(parent Scope) (Scope, []Transition, error) {
 		return []Event{StartCommand(scope)}, nil
 	}
 
-	transitions := []Transition{NewDynamicTransition(StartCommand(scope), destinationFunc)}
+	transitions := []Transition{
+		NewDynamicTransition(StartCommand(scope), destinationFunc, []PossibleDestination{
+			NewReason(StartCommand(scope), "WaitFor condition is not met"),
+			NewReason(CompletedEvent(scope), "WaitFor condition is met"),
+		}),
+	}
 
 	return scope, transitions, nil
 }
