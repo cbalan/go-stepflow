@@ -86,12 +86,16 @@ func (sf *stepFlowImpl) IsCompleted(state []string) bool {
 
 type Scope interface {
 	Name() string
+	Parent() Scope
 }
 
-type scopeImpl string
+type scopeImpl struct {
+	name   string
+	parent Scope
+}
 
 func NewScope(name string) Scope {
-	return scopeImpl(name)
+	return &scopeImpl{name: name}
 }
 
 func WithParent(scope Scope, parent Scope) Scope {
@@ -99,11 +103,15 @@ func WithParent(scope Scope, parent Scope) Scope {
 		return scope
 	}
 
-	return scopeImpl(parent.Name() + "/" + scope.Name())
+	return &scopeImpl{name: parent.Name() + "/" + scope.Name(), parent: parent}
 }
 
-func (s scopeImpl) Name() string {
-	return string(s)
+func (s *scopeImpl) Name() string {
+	return s.name
+}
+
+func (s *scopeImpl) Parent() Scope {
+	return s.parent
 }
 
 type Event interface {
