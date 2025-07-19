@@ -8,11 +8,11 @@ type retriableTransition struct {
 	retryEvent       Event
 }
 
-func (rt retriableTransition) Source() Event {
+func (rt *retriableTransition) Source() Event {
 	return rt.transition.Source()
 }
 
-func (rt retriableTransition) Destination(ctx context.Context) ([]Event, error) {
+func (rt *retriableTransition) Destination(ctx context.Context) ([]Event, error) {
 	events, err := rt.transition.Destination(ctx)
 	if err != nil {
 		shouldRetry, errorHandlerErr := rt.errorHandlerFunc(ctx, err)
@@ -30,7 +30,7 @@ func (rt retriableTransition) Destination(ctx context.Context) ([]Event, error) 
 	return events, err
 }
 
-func (rt retriableTransition) IsExclusive() bool {
+func (rt *retriableTransition) IsExclusive() bool {
 	return rt.transition.IsExclusive()
 }
 
@@ -51,7 +51,7 @@ func (ri *retryItem) Transitions(parent Scope) (Scope, []Transition, error) {
 
 	var transitions []Transition
 	for _, transition := range itemTransitions {
-		transitions = append(transitions, retriableTransition{
+		transitions = append(transitions, &retriableTransition{
 			transition:       transition,
 			errorHandlerFunc: ri.errorHandlerFunc,
 			retryEvent:       StartCommand(itemScope),
