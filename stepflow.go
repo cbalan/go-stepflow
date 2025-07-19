@@ -48,11 +48,6 @@ func Steps() *StepsSpec {
 	return &StepsSpec{}
 }
 
-type StepFlow interface {
-	Apply(ctx context.Context, state []string) ([]string, error)
-	IsCompleted(state []string) bool
-}
-
-func NewStepFlow(name string, stepsSpec *StepsSpec) (StepFlow, error) {
+func NewStepFlow(name string, stepsSpec *StepsSpec) (core.StepFlow, error) {
 	return core.NewStepFlow(core.NewStepsItem(name, Items(stepsSpec)))
 }

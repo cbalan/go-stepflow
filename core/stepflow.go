@@ -5,40 +5,19 @@ import (
 	"fmt"
 )
 
-type Scope interface {
-	Name() string
+type StepFlow interface {
+	Apply(ctx context.Context, state []string) ([]string, error)
+	IsCompleted(state []string) bool
 }
 
-type scopeImpl string
-
-func NewScope(name string) Scope {
-	return scopeImpl(name)
-}
-
-func WithParent(scope Scope, parent Scope) Scope {
-	if parent == nil {
-		return scope
-	}
-
-	return scopeImpl(parent.Name() + "/" + scope.Name())
-}
-
-func (s scopeImpl) Name() string {
-	return string(s)
-}
-
-type StepFlowItem interface {
-	Transitions(parent Scope) (Scope, []Transition, error)
-}
-
-type StepFlow struct {
+type stepFlowImpl struct {
 	item           StepFlowItem
 	transitionsMap map[string][]Transition
 	startState     []string
 	completedState []string
 }
 
-func NewStepFlow(item StepFlowItem) (*StepFlow, error) {
+func NewStepFlow(item StepFlowItem) (StepFlow, error) {
 	itemScope, transitions, err := item.Transitions(nil)
 	if err != nil {
 		return nil, err
@@ -53,12 +32,12 @@ func NewStepFlow(item StepFlowItem) (*StepFlow, error) {
 	startState := []string{eventString(StartCommand(itemScope))}
 	completedState := []string{eventString(CompletedEvent(itemScope))}
 
-	return &StepFlow{item: item, transitionsMap: transitionsMap, startState: startState, completedState: completedState}, nil
+	return &stepFlowImpl{item: item, transitionsMap: transitionsMap, startState: startState, completedState: completedState}, nil
 }
 
 const ApplyOneMaxIterations = 100
 
-func (sf *StepFlow) Apply(ctx context.Context, oldState []string) ([]string, error) {
+func (sf *stepFlowImpl) Apply(ctx context.Context, oldState []string) ([]string, error) {
 	newState := withDefaultValue(oldState, sf.startState)
 	var isExclusive bool
 	var err error
@@ -73,7 +52,7 @@ func (sf *StepFlow) Apply(ctx context.Context, oldState []string) ([]string, err
 	return newState, err
 }
 
-func (sf *StepFlow) applyOne(ctx context.Context, oldState []string) ([]string, bool, error) {
+func (sf *stepFlowImpl) applyOne(ctx context.Context, oldState []string) ([]string, bool, error) {
 	if sf.IsCompleted(oldState) {
 		return oldState, true, nil
 	}
@@ -97,12 +76,34 @@ func withDefaultValue(value []string, defaultValue []string) []string {
 	return value
 }
 
-func (sf *StepFlow) IsCompleted(state []string) bool {
+func (sf *stepFlowImpl) IsCompleted(state []string) bool {
 	if len(state) != 1 {
 		return false
 	}
 
 	return state[0] == sf.completedState[0]
+}
+
+type Scope interface {
+	Name() string
+}
+
+type scopeImpl string
+
+func NewScope(name string) Scope {
+	return scopeImpl(name)
+}
+
+func WithParent(scope Scope, parent Scope) Scope {
+	if parent == nil {
+		return scope
+	}
+
+	return scopeImpl(parent.Name() + "/" + scope.Name())
+}
+
+func (s scopeImpl) Name() string {
+	return string(s)
 }
 
 type Event interface {
@@ -146,6 +147,10 @@ func StartCommand(scope Scope) Event {
 
 func CompletedEvent(scope Scope) Event {
 	return NewEvent("completed", scope)
+}
+
+type StepFlowItem interface {
+	Transitions(parent Scope) (Scope, []Transition, error)
 }
 
 type Transition interface {
