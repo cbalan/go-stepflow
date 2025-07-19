@@ -5,6 +5,12 @@ import (
 	"github.com/cbalan/go-stepflow/core"
 )
 
+type StepFlow = core.StepFlow
+
+func NewStepFlow(name string, stepsSpec *StepsSpec) (StepFlow, error) {
+	return core.NewStepFlow(core.NewStepsItem(name, Items(stepsSpec)))
+}
+
 type StepsSpec struct {
 	items []core.StepFlowItem
 }
@@ -46,8 +52,4 @@ func (s *StepsSpec) Case(name string, conditionFunc func(ctx context.Context) (b
 
 func Steps() *StepsSpec {
 	return &StepsSpec{}
-}
-
-func NewStepFlow(name string, stepsSpec *StepsSpec) (core.StepFlow, error) {
-	return core.NewStepFlow(core.NewStepsItem(name, Items(stepsSpec)))
 }
