@@ -26,7 +26,8 @@ import (
 )
 
 func DeployStepFlow() (stepflow.StepFlow, error) {
-	return stepflow.NewStepFlow("deploy/v1", stepflow.Steps().
+	return stepflow.NewStepFlow(stepflow.Steps().
+		WithName("deploy/v1").
 		Do("getPreActualState", getActualState("preDeploy")).
 		WaitFor("preActualState", isGetActualStateCompleted("preDeploy")).
 		Case("shouldDeploy", shouldDeploy, stepflow.Steps().
