@@ -22,5 +22,11 @@ func (fi *funcItem) Transitions(parent Scope) (Scope, []Transition, error) {
 		return []Event{CompletedEvent(scope)}, nil
 	}
 
-	return scope, []Transition{NewDynamicTransition(StartCommand(scope), destinationFunc)}, nil
+	transitions := []Transition{
+		NewDynamicTransition(StartCommand(scope), destinationFunc, []PossibleDestination{
+			NewReason(CompletedEvent(scope), "completed"),
+		}),
+	}
+
+	return scope, transitions, nil
 }

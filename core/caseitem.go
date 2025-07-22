@@ -38,7 +38,10 @@ func (ci *caseItem) Transitions(parent Scope) (Scope, []Transition, error) {
 	}
 
 	transitions := []Transition{
-		NewDynamicTransition(StartCommand(scope), destinationFunc),
+		NewDynamicTransition(StartCommand(scope), destinationFunc, []PossibleDestination{
+			NewReason(StartCommand(itemScope), "Case condition is met"),
+			NewReason(CompletedEvent(scope), "Case condition is not met"),
+		}),
 		NewStaticTransition(CompletedEvent(itemScope), CompletedEvent(scope)),
 	}
 

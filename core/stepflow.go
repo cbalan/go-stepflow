@@ -86,12 +86,16 @@ func (sf *stepFlowImpl) IsCompleted(state []string) bool {
 
 type Scope interface {
 	Name() string
+	Parent() Scope
 }
 
-type scopeImpl string
+type scopeImpl struct {
+	name   string
+	parent Scope
+}
 
 func NewScope(name string) Scope {
-	return scopeImpl(name)
+	return &scopeImpl{name: name}
 }
 
 func WithParent(scope Scope, parent Scope) Scope {
@@ -99,11 +103,15 @@ func WithParent(scope Scope, parent Scope) Scope {
 		return scope
 	}
 
-	return scopeImpl(parent.Name() + "/" + scope.Name())
+	return &scopeImpl{name: parent.Name() + "/" + scope.Name(), parent: parent}
 }
 
-func (s scopeImpl) Name() string {
-	return string(s)
+func (s *scopeImpl) Name() string {
+	return s.name
+}
+
+func (s *scopeImpl) Parent() Scope {
+	return s.parent
 }
 
 type Event interface {
@@ -153,10 +161,33 @@ type StepFlowItem interface {
 	Transitions(parent Scope) (Scope, []Transition, error)
 }
 
+type PossibleDestination interface {
+	Event() Event
+	Reason() string
+}
+
+type eventAndReason struct {
+	event  Event
+	reason string
+}
+
+func NewReason(event Event, reason string) PossibleDestination {
+	return &eventAndReason{event: event, reason: reason}
+}
+
+func (n eventAndReason) Event() Event {
+	return n.event
+}
+
+func (n eventAndReason) Reason() string {
+	return n.reason
+}
+
 type Transition interface {
 	Source() Event
 	Destination(context.Context) ([]Event, error)
 	IsExclusive() bool
+	PossibleDestinations() []PossibleDestination
 }
 
 type staticTransition struct {
@@ -180,13 +211,22 @@ func (t *staticTransition) IsExclusive() bool {
 	return false
 }
 
-type dynamicTransition struct {
-	source          Event
-	destinationFunc func(context.Context) ([]Event, error)
+func (t *staticTransition) PossibleDestinations() []PossibleDestination {
+	var result []PossibleDestination
+	for _, destination := range t.destination {
+		result = append(result, NewReason(destination, "static"))
+	}
+	return result
 }
 
-func NewDynamicTransition(source Event, destinationFunc func(context.Context) ([]Event, error)) Transition {
-	return &dynamicTransition{source: source, destinationFunc: destinationFunc}
+type dynamicTransition struct {
+	source               Event
+	destinationFunc      func(context.Context) ([]Event, error)
+	possibleDestinations []PossibleDestination
+}
+
+func NewDynamicTransition(source Event, destinationFunc func(context.Context) ([]Event, error), possibleDestinations []PossibleDestination) Transition {
+	return &dynamicTransition{source: source, destinationFunc: destinationFunc, possibleDestinations: possibleDestinations}
 }
 
 func (t *dynamicTransition) Source() Event {
@@ -199,4 +239,8 @@ func (t *dynamicTransition) Destination(ctx context.Context) ([]Event, error) {
 
 func (t *dynamicTransition) IsExclusive() bool {
 	return true
+}
+
+func (t *dynamicTransition) PossibleDestinations() []PossibleDestination {
+	return t.possibleDestinations
 }

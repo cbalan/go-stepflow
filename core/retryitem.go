@@ -34,6 +34,13 @@ func (rt *retriableTransition) IsExclusive() bool {
 	return rt.transition.IsExclusive()
 }
 
+func (t *retriableTransition) PossibleDestinations() []PossibleDestination {
+	var result []PossibleDestination
+	result = append(result, t.transition.PossibleDestinations()...)
+	result = append(result, NewReason(t.retryEvent, "retry"))
+	return result
+}
+
 type retryItem struct {
 	item             StepFlowItem
 	errorHandlerFunc func(ctx context.Context, err error) (bool, error)

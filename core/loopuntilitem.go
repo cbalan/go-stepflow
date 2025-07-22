@@ -35,7 +35,10 @@ func (lui *loopUntilItem) Transitions(parent Scope) (Scope, []Transition, error)
 
 	transitions := []Transition{
 		NewStaticTransition(StartCommand(scope), StartCommand(itemScope)),
-		NewDynamicTransition(CompletedEvent(itemScope), destinationFunc),
+		NewDynamicTransition(CompletedEvent(itemScope), destinationFunc, []PossibleDestination{
+			NewReason(StartCommand(itemScope), "LoopUntil condition is not met"),
+			NewReason(CompletedEvent(scope), "LoopUntil condition is met"),
+		}),
 	}
 
 	transitions = append(transitions, itemTransitions...)
