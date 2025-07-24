@@ -32,6 +32,11 @@ func NewStepFlow(item StepFlowItem) (StepFlow, error) {
 	transitionsMap := make(map[string][]Transition)
 	for _, t := range transitions {
 		source := eventString(t.Source())
+
+		if _, found := transitionsMap[source]; found {
+			return nil, fmt.Errorf("duplicate transition source %s", source)
+		}
+
 		transitionsMap[source] = append(transitionsMap[source], t)
 	}
 
