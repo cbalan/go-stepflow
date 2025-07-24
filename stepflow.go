@@ -2,7 +2,6 @@ package stepflow
 
 import (
 	"context"
-	"fmt"
 	"github.com/cbalan/go-stepflow/core"
 )
 
@@ -10,10 +9,6 @@ type StepFlow = core.StepFlow
 
 // NewStepFlow creates a new executable workflow from steps specification.
 func NewStepFlow(stepsSpec *StepsSpec) (StepFlow, error) {
-	if stepsSpec.name == "" {
-		return nil, fmt.Errorf("top level steps name must be set")
-	}
-
 	return core.NewStepFlow(core.NewStepsItem(stepsSpec.name, stepsSpec.items))
 }
 
@@ -79,7 +74,7 @@ func (s *StepsSpec) WithName(name string) *StepsSpec {
 // Steps creates a new empty steps specification.
 // This is the starting point for defining a workflow using the fluent API.
 func Steps() *StepsSpec {
-	return &StepsSpec{}
+	return &StepsSpec{name: "steps"}
 }
 
 // Transitions returns the list of transitions as defined by the steps specification.
