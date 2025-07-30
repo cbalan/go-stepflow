@@ -1,150 +1,89 @@
 # go-stepflow
 
-**go-stepflow** is a Go library for building and executing durable long-running processes.
-It was designed originally to be used in conjunction with kubebuilder/controller-runtime to build Kubernetes controllers, but it has no dependencies to Kubernetes.
+**go-stepflow** is a Go library for building and executing stateful, resumable workflows using a fluent API.
 
-## Example
-A continuous deployment pipeline step with the following structure may be implemented using the code snippets below.
- * Trigger async actual state collection for a given application in a given environment.
- * Wait for the async operation to complete
- * Compare the desired state with the actual state. If change is required:
-   - Create an automated git pull request to the GitOps repository
-   - Wait for the automated pull request to be merged automatically.
-   - Wait for the GitOps agent(ie. ArgoCD) to successfully uptake the new change. Report back any deployment related events(ie. rolling upgrade details).
-   - Trigger post deployment async actual state collections.
-   - Wait for the async operation to complete.
-   - Validate the post deployment actual state.
+It is designed for building systems that need to manage complex multi-step processes over time, such as:
+- Continuous deployment pipelines
+- Business process orchestration
+- Multi-stage data processing
+- Long-running external service integrations
 
+## Key Features
+- **Fluent, Declarative API** - Build workflows by chaining intuitive method calls.
+- **State Machine Foundation** -  Execution model based on event transitions.
+- **Persistence & Resumability** - Save workflow state after each step for fault tolerance.
+- **Composable Step Patterns** - Combine and nest steps to create complex workflows.
+- **Built-in Control Flow** - Conditional execution, loops, and error handling.
 
-### Workflow definition
+## Installation
+```bash
+go get github.com/cbalan/go-stepflow
+```
+
+## Quick Start
 
 ```go
-package demo
+package main
 
 import (
-	"github.com/cbalan/go-stepflow"
+    "context"
+    "fmt"
+    "github.com/cbalan/go-stepflow"
 )
 
-func DeployStepFlow() (stepflow.StepFlow, error) {
-	return stepflow.NewStepFlow(stepflow.Steps().
-		WithName("deploy.v1").
-		Do("getPreActualState", getActualState("preDeploy")).
-		WaitFor("preActualState", isGetActualStateCompleted("preDeploy")).
-		Case("shouldDeploy", shouldDeploy, stepflow.Steps().
-			Do("createDeployRequest", createGitOpsVersionBump).
-			WaitFor("acceptedDeployRequest", isGitOpsVersionBumpAccepted).
-			WaitFor("monitorDeploymentProgress", isVersionLiveSuccessfully).
-			Do("getPostActualState", getActualState("postDeploy")).
-			WaitFor("postActualState", isGetActualStateCompleted("postDeploy")).
-			Do("validatePostDeployActualState", validatePostActuatState)))
-}
+func main() {
+    // Define workflow
+    flow, err := stepflow.NewStepFlow(stepflow.Steps().
+        Do("step1", func(ctx context.Context) error {
+            fmt.Println("Executing step 1")
+            return nil
+        }).
+        WaitFor("condition", func(ctx context.Context) (bool, error) {
+            // Return true when ready to proceed
+            return true, nil
+        }).
+        Do("step2", func(ctx context.Context) error {
+            fmt.Println("Executing step 2")
+            return nil
+        }))
 
-...
+    if err != nil {
+        panic(err)
+    }
 
-func createGitOpsVersionBump(ctx context.Context) error {
-  ... 
-
-  err := gitClient.CreatePullRequest(...)
-  ...
-  
-  return nil
+    // Execute workflow
+    var state []string // Could be loaded from persistent storage
+    for !flow.IsCompleted(state) {
+        state, err = flow.Apply(context.Background(), state)
+        if err != nil {
+            panic(err)
+        }
+        // Persist state here if needed
+    }
 }
 ```
 
-### Workflow initialization in the main function
+## Core Building Blocks
+go-stepflow provides several key components for building workflows:
+
+### Step Types
+- **`Do(name, func)`** - Execute a function
+- **`WaitFor(name, conditionFunc)`** - Execute conditionFunc in a loop until the wait condition is met and the workflow can proceed to the next step.
+- **`Steps(name, steps)`** - Group multiple steps together.
+- **`Case(name, conditionFunc, steps)`** - Conditional execution.
+- **`Retry(name, errorHandlerFunc, steps)`** - Error handling with retry logic.
+- **`LoopUntil(name, conditionFunc, steps)`** - Repeat steps until condition is met.
+
+### Example Workflow
 ```go
-  flow, err := DeployStepFlow()
+workflow, err := stepflow.NewStepFlow(stepflow.Steps()
+    Do("prepare", prepareEnvironment).
+    WaitFor("ready", isEnvironmentReady).
+    Case("shouldDeploy", shouldDeployNewVersion, stepflow.Steps().
+        Do("deploy", deployNewVersion).
+        WaitFor("deployed", isDeploymentComplete).
+        Do("validate", validateDeployment)).
+    Do("cleanup", cleanupResources))
 ```
 
-
-### Workflow execution loop
-```go
-// Prepare execution context
-applyCtx, err := setFlowApplyContext(ctx)
-
-// Load previous state
-previousState, err := getState(ctx)
-
-// Execute workflow iteration 
-newState, err := flow.Apply(applyCtx, previousState)
-
-// Save new state
-err := saveState(newState)
-```
-
-### Underlying stepflow state machine
-```mermaid
-stateDiagram-v2
-   [*] --> start&colon;deploy.v1
-completed&colon;deploy.v1 --> [*]
-state deploy.v1 {
-state deploy.v1/getPreActualState {
-start&colon;deploy.v1/getPreActualState
-completed&colon;deploy.v1/getPreActualState
-}
-state deploy.v1/preActualStateWaitFor {
-start&colon;deploy.v1/preActualStateWaitFor
-completed&colon;deploy.v1/preActualStateWaitFor
-}
-state deploy.v1/shouldDeployCase {
-state deploy.v1/shouldDeployCase/steps {
-state deploy.v1/shouldDeployCase/steps/validatePostDeployActualState {
-start&colon;deploy.v1/shouldDeployCase/steps/validatePostDeployActualState
-completed&colon;deploy.v1/shouldDeployCase/steps/validatePostDeployActualState
-}
-state deploy.v1/shouldDeployCase/steps/createDeployRequest {
-start&colon;deploy.v1/shouldDeployCase/steps/createDeployRequest
-completed&colon;deploy.v1/shouldDeployCase/steps/createDeployRequest
-}
-state deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor {
-start&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor
-completed&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor
-}
-state deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor {
-start&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor
-completed&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor
-}
-state deploy.v1/shouldDeployCase/steps/getPostActualState {
-start&colon;deploy.v1/shouldDeployCase/steps/getPostActualState
-completed&colon;deploy.v1/shouldDeployCase/steps/getPostActualState
-}
-state deploy.v1/shouldDeployCase/steps/postActualStateWaitFor {
-start&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor
-completed&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor
-}
-start&colon;deploy.v1/shouldDeployCase/steps
-completed&colon;deploy.v1/shouldDeployCase/steps
-}
-start&colon;deploy.v1/shouldDeployCase
-completed&colon;deploy.v1/shouldDeployCase
-}
-start&colon;deploy.v1
-completed&colon;deploy.v1
-}
-completed&colon;deploy.v1/getPreActualState --> start&colon;deploy.v1/preActualStateWaitFor: static
-start&colon;deploy.v1/preActualStateWaitFor --> start&colon;deploy.v1/preActualStateWaitFor: WaitFor condition is not met
-start&colon;deploy.v1/preActualStateWaitFor --> completed&colon;deploy.v1/preActualStateWaitFor: WaitFor condition is met
-completed&colon;deploy.v1/preActualStateWaitFor --> start&colon;deploy.v1/shouldDeployCase: static
-start&colon;deploy.v1/shouldDeployCase/steps --> start&colon;deploy.v1/shouldDeployCase/steps/createDeployRequest: static
-completed&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor --> start&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor: static
-completed&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor --> start&colon;deploy.v1/shouldDeployCase/steps/validatePostDeployActualState: static
-completed&colon;deploy.v1/shouldDeployCase --> completed&colon;deploy.v1: static
-start&colon;deploy.v1/shouldDeployCase/steps/createDeployRequest --> completed&colon;deploy.v1/shouldDeployCase/steps/createDeployRequest: completed
-start&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor --> completed&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor: WaitFor condition is met
-start&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor --> start&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor: WaitFor condition is not met
-start&colon;deploy.v1 --> start&colon;deploy.v1/getPreActualState: static
-start&colon;deploy.v1/shouldDeployCase --> start&colon;deploy.v1/shouldDeployCase/steps: Case condition is met
-start&colon;deploy.v1/shouldDeployCase --> completed&colon;deploy.v1/shouldDeployCase: Case condition is not met
-completed&colon;deploy.v1/shouldDeployCase/steps/createDeployRequest --> start&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor: static
-start&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor --> start&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor: WaitFor condition is not met
-start&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor --> completed&colon;deploy.v1/shouldDeployCase/steps/acceptedDeployRequestWaitFor: WaitFor condition is met
-completed&colon;deploy.v1/shouldDeployCase/steps/getPostActualState --> start&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor: static
-start&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor --> start&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor: WaitFor condition is not met
-start&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor --> completed&colon;deploy.v1/shouldDeployCase/steps/postActualStateWaitFor: WaitFor condition is met
-start&colon;deploy.v1/getPreActualState --> completed&colon;deploy.v1/getPreActualState: completed
-completed&colon;deploy.v1/shouldDeployCase/steps --> completed&colon;deploy.v1/shouldDeployCase: static
-completed&colon;deploy.v1/shouldDeployCase/steps/monitorDeploymentProgressWaitFor --> start&colon;deploy.v1/shouldDeployCase/steps/getPostActualState: static
-start&colon;deploy.v1/shouldDeployCase/steps/getPostActualState --> completed&colon;deploy.v1/shouldDeployCase/steps/getPostActualState: completed
-start&colon;deploy.v1/shouldDeployCase/steps/validatePostDeployActualState --> completed&colon;deploy.v1/shouldDeployCase/steps/validatePostDeployActualState: completed
-completed&colon;deploy.v1/shouldDeployCase/steps/validatePostDeployActualState --> completed&colon;deploy.v1/shouldDeployCase/steps: static
-```
+Please visit [go-stepflow-examples](https://github.com/cbalan/go-stepflow-examples) for additional examples.
