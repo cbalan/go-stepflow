@@ -26,40 +26,54 @@ go get github.com/cbalan/go-stepflow
 package main
 
 import (
-    "context"
-    "fmt"
-    "github.com/cbalan/go-stepflow"
+	"context"
+	"fmt"
+
+	"github.com/cbalan/go-stepflow"
 )
 
+func step1(ctx context.Context) error {
+	fmt.Println("Executing step 1")
+	return nil
+}
+
+func aCondition(ctx context.Context) (bool, error) {
+	fmt.Println("Return true when ready to proceed.")
+	return true, nil
+}
+
+func step2(ctx context.Context) error {
+	fmt.Println("Executing step 2")
+	return nil
+}
+
+func quickStartStepFlow() (stepflow.StepFlow, error) {
+	return stepflow.NewStepFlow(stepflow.Steps().WithName("quickstart.v1").
+		Do("step1", step1).
+		WaitFor("aCondition", aCondition).
+		Do("step2", step2))
+}
+
 func main() {
-    // Define workflow
-    flow, err := stepflow.NewStepFlow(stepflow.Steps().
-        Do("step1", func(ctx context.Context) error {
-            fmt.Println("Executing step 1")
-            return nil
-        }).
-        WaitFor("condition", func(ctx context.Context) (bool, error) {
-            // Return true when ready to proceed
-            return true, nil
-        }).
-        Do("step2", func(ctx context.Context) error {
-            fmt.Println("Executing step 2")
-            return nil
-        }))
+	// Workflow definition.
+	flow, err := quickStartStepFlow()
+	if err != nil {
+		panic(err)
+	}
 
-    if err != nil {
-        panic(err)
-    }
-
-    // Execute workflow
-    var state []string // Could be loaded from persistent storage
-    for !flow.IsCompleted(state) {
-        state, err = flow.Apply(context.Background(), state)
-        if err != nil {
-            panic(err)
-        }
-        // Persist state here if needed
-    }
+	// Workflow execution.
+	var state []string
+	for !flow.IsCompleted(state) {
+		// Could load state from persistent storage.
+		
+		// Apply workflow on the old state.
+		state, err = flow.Apply(context.Background(), state)
+		if err != nil {
+			panic(err)
+		}
+		
+		// Could save state to persistent storage.
+	}
 }
 ```
 
