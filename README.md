@@ -1,6 +1,6 @@
 # go-stepflow
 
-**go-stepflow** is a Go library for building and executing stateful, resumable workflows using a fluent API.
+**go-stepflow** is a Go library for building and executing resumable workflows using a fluent API.
 
 It is designed for building systems that need to manage complex multi-step processes over time, such as:
 - Continuous deployment pipelines
@@ -14,6 +14,10 @@ It is designed for building systems that need to manage complex multi-step proce
 - **Persistence & Resumability** - Save workflow state after each step for fault tolerance.
 - **Composable Step Patterns** - Combine and nest steps to create complex workflows.
 - **Built-in Control Flow** - Conditional execution, loops, and error handling.
+
+> **Durable workflows**
+> This library only provides the means to pause a workflow and serialize its state after each step, based on the provided definition.
+> To implement durable workflows, this library must be paired with systems that provide persistent storage and distributed locks.
 
 ## Installation
 ```bash
