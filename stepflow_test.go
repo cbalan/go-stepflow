@@ -58,8 +58,7 @@ func TestSteps(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow(stepflow.Steps().
-		WithName("TestSteps").
+	flow, err := stepflow.NewStepFlow(stepflow.Named("TestSteps").
 		Do("stepA", stepA).
 		Do("stepB", stepB).
 		Do("stepC", stepC).
@@ -123,8 +122,7 @@ func TestWaitFor(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow(stepflow.Steps().
-		WithName("TestWaitFor").
+	flow, err := stepflow.NewStepFlow(stepflow.Named("TestWaitFor").
 		WaitFor("growEx", exLenIsAcceptable).
 		Do("logExchange", logExchange))
 	if err != nil {
@@ -201,8 +199,7 @@ func TestRetry(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow(stepflow.Steps().
-		WithName("TestRetry").
+	flow, err := stepflow.NewStepFlow(stepflow.Named("TestRetry").
 		Do("logInitialExchange", logExchange).
 		Retry("growEx", logErrorAndRetry, stepflow.Steps().
 			Do("addA", addA).
@@ -269,8 +266,7 @@ func TestLoopUntil(t *testing.T) {
 		return nil
 	}
 
-	flow, err := stepflow.NewStepFlow(stepflow.Steps().
-		WithName("TestLoopUntil").
+	flow, err := stepflow.NewStepFlow(stepflow.Named("TestLoopUntil").
 		Do("addA", addA).
 		LoopUntil("growEx", exLenIsAcceptable, stepflow.Steps().
 			Do("addA", addA).
@@ -327,8 +323,7 @@ func TestCase(t *testing.T) {
 		return false, nil
 	}
 
-	flow, err := stepflow.NewStepFlow(stepflow.Steps().
-		WithName("TestCase").
+	flow, err := stepflow.NewStepFlow(stepflow.Named("TestCase").
 		Do("beforeTrueCase", doLog("beforeTrueCase")).
 		Case("ifTrue", alwaysTrue, stepflow.Steps().
 			Do("stepA", doLog("stepA")).
@@ -402,8 +397,7 @@ func TestGenericExample(t *testing.T) {
 		return true, nil
 	}
 
-	flow, err := stepflow.NewStepFlow(stepflow.Steps().
-		WithName("deploy/v1").
+	flow, err := stepflow.NewStepFlow(stepflow.Named("deploy/v1").
 		Do("getPreActualState", doLog("preDeploy")).
 		WaitFor("preActualState", isGetActualStateCompleted("preDeploy")).
 		Case("shouldDeploy", shouldDeploy, stepflow.Steps().

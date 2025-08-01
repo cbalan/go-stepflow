@@ -18,6 +18,17 @@ type StepsSpec struct {
 	items []core.StepFlowItem
 }
 
+// Named creates and returns a new StepsSpec with the given name for structuring step-based workflows.
+func Named(name string) *StepsSpec {
+	return &StepsSpec{name: name}
+}
+
+// Steps creates a new empty steps specification.
+// This is the starting point for defining a workflow using the fluent API.
+func Steps() *StepsSpec {
+	return Named("steps")
+}
+
 // Steps adds a nested group of steps to the workflow with the given name.
 // The steps in stepSpec are executed sequentially as a single logical unit.
 // This is useful for organizing complex workflows into logical components.
@@ -66,15 +77,10 @@ func (s *StepsSpec) Case(name string, conditionFunc func(ctx context.Context) (b
 }
 
 // WithName sets the steps specification name. Information mainly used for the top level steps.
+// Deprecated: Please use Named(name)
 func (s *StepsSpec) WithName(name string) *StepsSpec {
 	s.name = name
 	return s
-}
-
-// Steps creates a new empty steps specification.
-// This is the starting point for defining a workflow using the fluent API.
-func Steps() *StepsSpec {
-	return &StepsSpec{name: "steps"}
 }
 
 // Transitions returns the list of transitions as defined by the steps specification.
