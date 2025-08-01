@@ -52,7 +52,7 @@ func step2(ctx context.Context) error {
 }
 
 func quickStartStepFlow() (stepflow.StepFlow, error) {
-	return stepflow.NewStepFlow(stepflow.Steps().WithName("quickstart.v1").
+	return stepflow.NewStepFlow(stepflow.Named("quickstart.v1").
 		Do("step1", step1).
 		WaitFor("aCondition", aCondition).
 		Do("step2", step2))
