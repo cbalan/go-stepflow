@@ -52,7 +52,7 @@ func step2(ctx context.Context) error {
 }
 
 func quickStartStepFlow() (stepflow.StepFlow, error) {
-	return stepflow.NewStepFlow(stepflow.Named("quickstart.v1").
+	return stepflow.New(stepflow.Named("quickstart.v1").
 		Do("step1", step1).
 		WaitFor("aCondition", aCondition).
 		Do("step2", step2))
@@ -94,7 +94,7 @@ go-stepflow provides several key components for building workflows:
 
 ### Example Workflow
 ```go
-workflow, err := stepflow.NewStepFlow(stepflow.Steps()
+workflow, err := stepflow.New(stepflow.Steps()
     Do("prepare", prepareEnvironment).
     WaitFor("ready", isEnvironmentReady).
     Case("shouldDeploy", shouldDeployNewVersion, stepflow.Steps().
