@@ -7,9 +7,15 @@ import (
 
 type StepFlow = core.StepFlow
 
-// NewStepFlow creates a new executable workflow from steps specification.
-func NewStepFlow(stepsSpec *StepsSpec) (StepFlow, error) {
+// New creates a new executable workflow from steps specification.
+func New(stepsSpec *StepsSpec) (StepFlow, error) {
 	return core.NewStepFlow(core.NewStepsItem(stepsSpec.name, stepsSpec.items))
+}
+
+// NewStepFlow creates a new executable workflow from steps specification.
+// Deprecated: Please use New.
+func NewStepFlow(stepsSpec *StepsSpec) (StepFlow, error) {
+	return New(stepsSpec)
 }
 
 // StepsSpec holds the structure of the step flow.
